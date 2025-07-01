@@ -1,0 +1,54 @@
+# IntelliJ IDEA specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Maven specific files (if you're using Maven for Spring Boot)
+.mvn/wrapper/maven-wrapper.jar
+backend/target/
+backend/pom.xml.tag
+backend/pom.xml.releaseBackup
+backend/pom.xml.versionsBackup
+backend/pom.xml.next
+backend/release.properties
+backend/dependency-reduced-pom.xml
+backend/build/ # For Gradle, if you were to switch from Maven
+
+# Compiled class files
+backend/bin/
+
+# Log files
+*.log
+backend/*.log
+logs/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.class
+
+# For Spring Boot Devtools (if used)
+backend/.reloaded
+
+# Frontend (React) specific files
+frontend/node_modules/
+frontend/build/ # Output of `npm run build` or `yarn build`
+frontend/.env # Environment variables
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.cache/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+frontend/.next/ # If using Next.js
+frontend/.parcel-cache/ # If using Parcel
+frontend/.vite/ # If using Vite
+
+# OS-specific files
+.DS_Store
+Thumbs.db
