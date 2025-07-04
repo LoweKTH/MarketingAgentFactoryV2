@@ -11,7 +11,7 @@ public class ChatClientConfig {
 
     /**
      * Creates a specific ChatClient-bean for Vertex AI Gemini.
-     * @Primary-annotation makes this to the standard ChatClient if no specific
+     * @Primary-annotation makes this the standard ChatClient if no specific
      * chatclient is chosen with @Qualifier annotation
      */
     @Bean

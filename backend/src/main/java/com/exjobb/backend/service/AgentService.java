@@ -17,11 +17,31 @@ public class AgentService {
         this.geminiChatClient = chatClient;
     }
 
+    /**
+     * Main method which orchestrates the process from plan to finished content
+     */
+    public String generateFullContent(ContentRequest request){
+        logger.info("Starting two-step-process for topic: {}", request.topic());
 
-    public String generateContentPlan(ContentRequest request){
-        logger.info("Genererar innehållsplan för ämne: {}", request.topic());
+        // Step 1: Create a strategic plan
+        String plan = generateContentPlan(request);
+        logger.info("Step 1 finished. Plan generated:\n{}", plan);
 
-        // Bygg en avancerad prompt med persona, uppgift, indata och önskat output-format.
+        // Step 2: Use the plan to generate the final result
+        String finalContent = createFinalContentFromPlan(request, plan);
+        logger.info("Step 2 finished. Final content generated:\n{}", finalContent);
+
+        return finalContent;
+    }
+
+    /**
+     * Private help method for Step 1: Creating the plan
+     * @param request
+     * @return
+     */
+    private String generateContentPlan(ContentRequest request){
+        logger.info("Generating content plan for topic: {}", request.topic());
+
         String userPrompt = """
              You are an expert on social media and content strategy.
              Your task is to create a detailed content plan based on the following information.
@@ -54,6 +74,36 @@ public class AgentService {
 
         return geminiChatClient.prompt()
                 .user(userPrompt)
+                .call()
+                .content();
+    }
+
+    /**
+     * Private help method for step 2: Creating the final content based on the plan
+     */
+    private String createFinalContentFromPlan(ContentRequest request, String plan){
+
+        String contentPrompt = """
+                You are an expert copywriter for social media.
+                Your task is to write a compelling social media post.
+                You must strictly follow the provided strategic plan.
+                
+                ---
+                ORIGINAL REQUEST:
+                - Topic: %s
+                - Target Platform: %s
+                - Extra instructions: %s
+                ---
+                STRATEGIC PLAN TO FOLLOW:
+                %s
+                ---
+                
+                Write the final, ready-to-publish social media post now.
+                """.formatted(request.topic(), request.targetPlatform(),
+                request.extraInstructions(), plan);
+
+        return geminiChatClient.prompt()
+                .user(contentPrompt)
                 .call()
                 .content();
     }
