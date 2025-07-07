@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { logoutUser } from '../api/authApi'; // Import the logout API function
 
 // Create the AuthContext
 const AuthContext = createContext(null);
@@ -25,10 +26,22 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Function to handle user logout
-    const logout = () => {
-        setIsAuthenticated(false);
-        localStorage.removeItem('isAuthenticated'); // Remove login state
-        console.log("User logged out.");
+    const logout = async () => { // Make logout async
+        try {
+            await logoutUser(); // Call the backend logout endpoint
+            setIsAuthenticated(false);
+            localStorage.removeItem('isAuthenticated'); // Remove login state
+            localStorage.removeItem('jwtToken'); // **Crucially, remove the JWT token**
+            console.log("User logged out successfully from frontend and backend.");
+        } catch (error) {
+            console.error("Error during logout:", error);
+            // Optionally, even if backend logout fails, you might want to clear frontend state
+            // to avoid inconsistencies, especially if the token is already invalid.
+            setIsAuthenticated(false);
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('jwtToken');
+            // You might also display an error message to the user here.
+        }
     };
 
     // The value provided to consumers of this context

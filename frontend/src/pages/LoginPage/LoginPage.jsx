@@ -1,30 +1,40 @@
 // LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth hook
+import { useAuth } from '../../contexts/AuthContext';
 
-// Import the new components
+// Import the API function
+import { loginUser } from '../../api/authApi'; // Adjust path if needed
+
 import LoginForm from './components/LoginForm';
 import AuthNavigationLinks from './components/AuthNavigationLinks';
 import MessageDisplay from './components/MessageDisplay';
 
 function LoginPage() {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState(''); // Changed from email to username
     const [password, setPassword] = useState('');
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
-    const { login } = useAuth(); // Get the login function from AuthContext
+    const { login } = useAuth();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (email === 'user@example.com' && password === 'password123') { // Simple mock authentication
-            setMessage('Login successful! Redirecting to content...');
+        setMessage('');
+
+        try {
+            const data = await loginUser(username, password); // Pass username instead of email
+
+            setMessage(data.message);
             login(); // Call the login function from context
+            // You should also handle storing data.jwt here for future authenticated requests
+            localStorage.setItem('jwtToken', data.jwt); // Example: store JWT token
+            console.log(data.jwt);
             setTimeout(() => {
                 navigate('/content');
             }, 1500);
-        } else {
-            setMessage('Invalid email or password.');
+        } catch (error) {
+            // The error object thrown by loginUser will contain the backend message
+            setMessage(error.message || 'An unexpected error occurred during login.');
         }
     };
 
@@ -36,8 +46,8 @@ function LoginPage() {
                 <MessageDisplay message={message} />
 
                 <LoginForm
-                    email={email}
-                    setEmail={setEmail}
+                    username={username} // Pass username prop
+                    setUsername={setUsername} // Pass setUsername prop
                     password={password}
                     setPassword={setPassword}
                     handleSubmit={handleSubmit}
