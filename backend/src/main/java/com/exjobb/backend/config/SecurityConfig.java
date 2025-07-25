@@ -1,13 +1,14 @@
 package com.exjobb.backend.config;
 
 import com.exjobb.backend.utils.JwtAuthenticationFilter;
-import com.exjobb.backend.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,45 +25,57 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Remove the UserService dependency from constructor
-    // Remove the @Autowired JwtAuthenticationFilter field
-
+    /**
+     * Säkerhetskedja #1 (Körs först): Hanterar helt publika endpoints.
+     * Ingen säkerhet appliceras på dessa sökvägar.
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
-        http.authorizeHttpRequests(authorize -> authorize
-                        // Tillåt åtkomst till actuator, h2-konsolen och login utan inlogg
-                        .requestMatchers("/api/auth/login", "/api/auth/logout", "/api/auth/facebook/**").permitAll()
-                        // Rollbaserad åtkomst
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/user/**").hasRole("USER")
-                        // Kräv inloggning för alla andra anrop
-                        .anyRequest().authenticated()
+    @Order(1)
+    public SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Denna kedja agerar BARA på dessa specifika sökvägar
+                .securityMatcher("/api/auth/**", "/mcp/**", "/h2-console/**", "/actuator/**")
+                .authorizeHttpRequests(authorize -> authorize
+                        // Tillåt alla anrop som matchar ovanstående
+                        .anyRequest().permitAll()
                 )
-                // Inaktivera form login för JWT
-                .formLogin(form -> form.disable())
-                // Inaktivera HTTP Basic auth
-                .httpBasic(basic -> basic.disable())
-                // Stateless session för JWT
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                // CORS konfiguration
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // CSRF inställningar för H2-konsolen och API
-                .csrf(csrf -> csrf.ignoringRequestMatchers
-                        ("/h2-console/**", "/api/agent/**", "/api/auth/**", "/api/chat/**"))
-                // Nödvändiga inställningar för att H2-konsolen ska fungera
-                .headers(headers ->
-                        headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                // Lägg till JWT filter - now injected as parameter
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable) // Stäng av CSRF helt för dessa endpoints
+                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)); // För H2-konsolen
 
         return http.build();
     }
 
     /**
-     * Password encoder bean required by UserService.
+     * Säkerhetskedja #2 (Körs efter #1): Vår vanliga, säkra JWT-kedja.
+     * Hanterar alla andra anrop som inte matchades av den första kedjan.
      */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain privateEndpointsFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+        http
+                .authorizeHttpRequests(authorize -> authorize
+                        // Era befintliga roll-baserade regler
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/user/**").hasRole("USER")
+                        // Alla andra anrop som når denna kedja måste vara autentiserade
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CSRF är onödigt för ett stateless JWT API, så vi kan stänga av det helt här
+                .csrf(AbstractHttpConfigurer::disable)
+                // Inaktivera de inloggningsmetoder vi inte använder
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                // Lägg till ert JWT-filter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    // --- Era befintliga hjälp-bönor (oförändrade) ---
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

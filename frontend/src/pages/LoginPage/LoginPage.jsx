@@ -28,6 +28,10 @@ function LoginPage() {
             login(); // Call the login function from context
             // You should also handle storing data.jwt here for future authenticated requests
             localStorage.setItem('jwtToken', data.jwt); // Example: store JWT token
+
+            // document.cookie = `jwt=${data.jwt}; path=/; max-age=86400; SameSite=Lax; HttpOnly; Secure`; // Recommended for production (if not set by backend)
+            // For development, if you're not using HTTPS or HttpOnly, you might use:
+            document.cookie = `jwt=${data.jwt}; path=/; max-age=86400; SameSite=Lax`; // Adjust SameSite/Secure/HttpOnly based on your backend setup and environment
             console.log(data.jwt);
             setTimeout(() => {
                 navigate('/content');

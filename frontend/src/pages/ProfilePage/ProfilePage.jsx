@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getFacebookStatus, redirectToFacebookOAuth } from '../../api/authApi';
+import { getFacebookStatus, redirectToFacebookOAuth, redirectToTwitterOAuth, getTwitterStatus} from '../../api/authApi';
 import SocialConnections from './components/SocialConnections';
 import ServiceCard from './components/ServiceCard';
 
@@ -7,9 +7,12 @@ const ProfilePage = () => {
     // Facebook connection status
     const [fbConnected, setFbConnected] = useState(false);
     const [fbStatusLoading, setFbStatusLoading] = useState(true);
+    // Twitter connection status
+    const [twConnected, setTwConnected] = useState(false);
+    const [twStatusLoading, setTwStatusLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStatus = async () => {
+        const fetchFacebookStatus = async () => {
             setFbStatusLoading(true);
             try {
                 const data = await getFacebookStatus();
@@ -20,11 +23,26 @@ const ProfilePage = () => {
                 setFbStatusLoading(false);
             }
         };
-        fetchStatus();
+        const fetchTwitterStatus = async () => {
+            setTwStatusLoading(true);
+            try {
+                const data = await getTwitterStatus();
+                setTwConnected(!!data.connected);
+            } catch (e) {
+                setTwConnected(false);
+            } finally {
+                setTwStatusLoading(false);
+            }
+        };
+        fetchFacebookStatus();
+        fetchTwitterStatus();
     }, []);
 
     const handleFacebookConnect = () => {
         redirectToFacebookOAuth();
+    };
+    const handleTwitterConnect = () => {
+        redirectToTwitterOAuth();
     };
 
     return (
@@ -40,6 +58,9 @@ const ProfilePage = () => {
                     fbConnected={fbConnected}
                     fbStatusLoading={fbStatusLoading}
                     onConnectFacebook={handleFacebookConnect}
+                    twConnected={twConnected}
+                    twStatusLoading={twStatusLoading}
+                    onConnectTwitter={handleTwitterConnect}
                 />
 
                 {/* Other Service Connections */}

@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage/LoginPage';
 import PrivateRoute from './components/PrivateRoute'; // Import PrivateRoute
 import ProfilePage from './pages/ProfilePage/ProfilePage';
 import TestFacebookPostPage from './pages/ProfilePage/TestFacebookPostPage';
+import TestTwitterPostPage from './pages/ProfilePage/TestTwitterPostPage';
 import { AuthProvider } from './contexts/AuthContext'; // Import AuthProvider
 
 function App() {
@@ -44,6 +45,14 @@ function App() {
                             element={
                                 <PrivateRoute>
                                     <TestFacebookPostPage />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/test-twitter-post"
+                            element={
+                                <PrivateRoute>
+                                    <TestTwitterPostPage />
                                 </PrivateRoute>
                             }
                         />
