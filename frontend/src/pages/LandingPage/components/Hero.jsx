@@ -12,7 +12,7 @@ function Hero() {
                 <p className="text-lg md:text-xl mb-8 opacity-90 animate-fade-in-up delay-200">
                     Streamline your workflow, boost productivity, and achieve your goals faster than ever before.
                 </p>
-                <Link to="/content" className="inline-block"> {/* Add inline-block to preserve button styling */}
+                <Link to="/chat-select" className="inline-block"> {/* Add inline-block to preserve button styling */}
                     <button className="bg-white text-indigo-600 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-100 hover:scale-105 transform transition duration-300 animate-fade-in-up delay-400 cursor-pointer">
                         Get Started For Free
                     </button>

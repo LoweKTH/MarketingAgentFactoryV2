@@ -20,8 +20,7 @@ public class InternalDataToolService {
         this.postRepository = postRepository;
     }
 
-    @Tool(name = "getTopPerformingPosts",
-            description = "Gets a list of the 5 best-performing past posts based on engagement score. " +
+    @Tool(description = "Gets a list of the 5 best-performing past posts based on engagement score. " +
                     "Use this to learn from successful content to match the style and tone..")
     public String getTopPerformingPosts(){
 

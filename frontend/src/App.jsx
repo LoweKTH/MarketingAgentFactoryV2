@@ -10,6 +10,7 @@ import PrivateRoute from './components/PrivateRoute'; // Import PrivateRoute
 import ProfilePage from './pages/ProfilePage/ProfilePage';
 import TestFacebookPostPage from './pages/ProfilePage/TestFacebookPostPage';
 import TestTwitterPostPage from './pages/ProfilePage/TestTwitterPostPage';
+import ConversationSelectionPage from './pages/ConversationSelectionPage/ConversationSelectionPage.jsx'; // Import the new page
 import { AuthProvider } from './contexts/AuthContext'; // Import AuthProvider
 
 function App() {
@@ -22,9 +23,21 @@ function App() {
                     <Routes>
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/login" element={<LoginPage />} />
-                        {/* Protect the /content route using PrivateRoute */}
+
+                        {/* New route for selecting/starting conversations */}
                         <Route
-                            path="/content"
+                            path="/chat-select"
+                            element={
+                                <PrivateRoute>
+                                    <ConversationSelectionPage />
+                                </PrivateRoute>
+                            }
+                        />
+
+                        {/* Updated route for ContentPage to accept an optional conversationId */}
+                        {/* The '?' makes conversationId optional. E.g., /chat for new, /chat/123 for existing */}
+                        <Route
+                            path="/chat/:conversationId?"
                             element={
                                 <PrivateRoute>
                                     <ContentPage />

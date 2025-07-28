@@ -34,7 +34,7 @@ function LoginPage() {
             document.cookie = `jwt=${data.jwt}; path=/; max-age=86400; SameSite=Lax`; // Adjust SameSite/Secure/HttpOnly based on your backend setup and environment
             console.log(data.jwt);
             setTimeout(() => {
-                navigate('/content');
+                navigate('/chat-select');
             }, 1500);
         } catch (error) {
             // The error object thrown by loginUser will contain the backend message

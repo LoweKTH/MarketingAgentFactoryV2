@@ -1,5 +1,6 @@
 package com.exjobb.backend.service;
 
+import com.exjobb.backend.dto.ChatConversationResponse;
 import com.exjobb.backend.dto.ChatMessageRequest;
 import com.exjobb.backend.dto.ChatMessageResponse;
 import com.exjobb.backend.entity.*;
@@ -97,28 +98,74 @@ public class AgentService {
      * @param conversationHistory
      * @return
      */
-    private String createMasterPrompt(String conversationHistory){
+    // I AgentService.java
+
+    private String createMasterPrompt(String conversationHistory) {
         return """
-            You are an expert, autonomous social media marketing agent.
-            Your SOLE purpose is to produce a high-quality, ready-to-publish social media post based on the user's request.
+            You are an expert, autonomous social media marketing agent. Your goal is to fulfill the user's request by using your tools and generating content.
 
-            **Your Process to Create High-Quality Content:**
-            1.  **Analyze Context:** Fully analyze the entire conversation history to understand the user's needs (topic, platform, tone).
-            2.  **Ask Only if Necessary:** If critical information is missing (like the platform), your ONLY response may be a single, clarifying question.
-            3.  **Gather Information for Quality:** To ensure the highest quality and match the company's voice, you **must** use the `getTopPerformingPosts` tool when the user asks for inspiration. This is a silent, internal step to gather data. Your final post should be based on the insights from this tool.
-            4.  **Generate Final Post:** Once you have all the information, generate the final, ready-to-publish post.
+            **--- YOUR DECISION PROCESS ---**
 
-            **Crucial Instructions on Output:**
-            - Never announce your internal steps. Do not say you are using a tool.
-            - If you ask a question, provide only the question.
-            - If you generate a post, your entire response MUST start with the tag `[POST_GENERATED][PLATFORM]` (e.g., `[POST_GENERATED][Twitter]`), followed by the post content on a new line.
+            1.  **ANALYZE THE USER'S LATEST REQUEST.**
+                - Does the user want to **schedule a recurring task** (e.g., "every day", "every 12 hours")?
+                 If YES, your primary goal is to call the `createTask` tool. Proceed to step 2 to determine the parameters for that tool.
+                - Does the user want a **finished post right now**?
+                 If YES, your goal is to generate content with the `[POST_GENERATED]` tag. Proceed to step 2.
+                - Does the user want **information or ideas**? If YES, your goal is to provide a clean text answer. Proceed to step 2.
+
+            2.  **GATHER INFORMATION FOR THE GOAL.**
+                - To fulfill your goal, you MUST use your available tools.
+                - If the user's request involves "news", you MUST use the `getMarketNews` tool.
+                - **TOPIC RULE:** If the `getMarketNews` tool requires a `topic` and the user's request is general (e.g., "latest news"),
+                 you **MUST** use the default topic `'business OR technology'`. **DO NOT ask the user for a topic.**
+                - If the user's request mentions "tone" or "inspiration", you should also use the `getTopPerformingPosts` tool.
+
+            3.  **EXECUTE.**
+                - If your goal was to schedule a task, call the `createTask` tool now with the prompt and schedule you have determined.
+                - If your goal was to create a post or provide information,
+                 generate the final response now using the information you gathered from your tools.
+
+            **--- OUTPUT FORMATTING ---**
+            - For informational requests, provide clean text.
+            - For post creation requests, use the `[POST_GENERATED][PLATFORM]` tag.
+            - When you call the `createTask` tool, your final response to the user should be the confirmation message from that tool.
 
             ---
-            CONVERSATION HISTORY (Your input for analysis):
+            CONVERSATION HISTORY:
             %s
             ---
             """.formatted(conversationHistory);
     }
+
+
+
+    /**
+     * Retrieves all chat conversations for a given user ID, ordered by creation timestamp.
+     * @param userId The ID of the user for whom to retrieve conversations.
+     * @return A list of ChatConversationResponse DTOs.
+     */
+    public List<ChatConversationResponse> getConversationsByUserId(Long userId) {
+        // Now, directly use the new repository method to find by user ID
+        return conversationRepository.findByUserIdOrderByCreationTimeStampDesc(userId).stream()
+                .map(conversation -> new ChatConversationResponse(
+                        conversation.getId(),
+                        conversation.getTitle(),
+                        conversation.getCreationTimeStamp()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves all chat messages for a given conversation ID, ordered by creation timestamp.
+     * @param conversationId The ID of the conversation.
+     * @return A list of ChatMessage entities.
+     */
+    public List<ChatMessage> getMessagesByConversationId(Long conversationId) {
+        // You might want to add security check here if a user should only access their own conversations
+        // e.g., if (conversationRepository.findById(conversationId).map(c -> !c.getUser().equals(currentUser)).orElse(true)) throw new AccessDeniedException;
+        return messageRepository.findByConversationIdOrderByCreationTimeStampAsc(conversationId);
+    }
+
 
 
     /**

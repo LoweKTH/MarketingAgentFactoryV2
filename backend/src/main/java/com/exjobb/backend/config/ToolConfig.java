@@ -19,15 +19,15 @@ public class ToolConfig {
         return MethodToolCallbackProvider.builder().toolObjects(internalDataToolService).build();
     }
 
-//    /**
-//     * This bean registers all the @Tool-annotated methods from
-//     * ExternalDataToolService so that they are globally available for ChatClients
-//     */
-//    @Bean
-//    public ToolCallbackProvider externalTools(ExternalDataToolService externalDataToolService) {
-//        return MethodToolCallbackProvider.builder().toolObjects(externalDataToolService).build();
-//    }
+    /**
+     * This bean registers all the @Tool-annotated methods from
+     * ExternalDataToolService so that they are globally available for ChatClients
+     */
+    @Bean
+    public ToolCallbackProvider externalTools(ExternalDataToolService externalDataToolService) {
+        return MethodToolCallbackProvider.builder().toolObjects(externalDataToolService).build();
+    }
 
 
-    // Gör samma för externalTools när den finns här
+
 }

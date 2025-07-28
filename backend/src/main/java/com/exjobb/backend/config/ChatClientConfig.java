@@ -2,11 +2,17 @@ package com.exjobb.backend.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 public class ChatClientConfig {
@@ -20,11 +26,16 @@ public class ChatClientConfig {
     @Bean
     @Primary
     public ChatClient geminiChatClient(VertexAiGeminiChatModel vertexAiGeminiChatModel,
-                                       ToolCallbackProvider internalTools) {
+                                       ToolCallbackProvider internalTools,
+                                       ToolCallbackProvider externalTools) {
 
-        ToolCallingChatOptions defaultToolOptions = ToolCallingChatOptions.builder()
-                .toolCallbacks(internalTools.getToolCallbacks())
-                .build();
+       List<ToolCallback> allToolCallbacks = new ArrayList<>();
+       allToolCallbacks.addAll(Arrays.asList(internalTools.getToolCallbacks()));
+       allToolCallbacks.addAll(Arrays.asList(externalTools.getToolCallbacks()));
+
+       ToolCallingChatOptions defaultToolOptions = ToolCallingChatOptions.builder()
+               .toolCallbacks(allToolCallbacks)
+               .build();
 
         return ChatClient.builder(vertexAiGeminiChatModel)
                 .defaultOptions(defaultToolOptions)
