@@ -33,11 +33,11 @@ public class ExternalDataToolService {
     private final SocialMediaPostRepository socialMediaPostRepository;
 
     public ExternalDataToolService(SocialMediaPostRepository postRepository,
-                                   @Value("${news.api.key}") String newsApiKey,
-                                   ScheduledTaskRepository scheduledTaskRepository,
-                                   UserRepository userRepository,
-                                   FacebookService facebookService,
-                                   SocialMediaPostRepository socialMediaPostRepository){
+            @Value("${news.api.key}") String newsApiKey,
+            ScheduledTaskRepository scheduledTaskRepository,
+            UserRepository userRepository,
+            FacebookService facebookService,
+            SocialMediaPostRepository socialMediaPostRepository) {
         this.postRepository = postRepository;
         this.newsApiKey = newsApiKey;
         this.scheduledTaskRepository = scheduledTaskRepository;
@@ -49,13 +49,16 @@ public class ExternalDataToolService {
 
     // Records for JSON-parsing
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record NewsArticle(String title, String description){}
+    private record NewsArticle(String title, String description) {
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record NewsDataResponse(List<NewsArticle> results){}
+    private record NewsDataResponse(List<NewsArticle> results) {
+    }
 
     @Tool(description = "Gets recent news headlines for a given topic and country. " +
             "Use this to find trending information and create timely content.")
-    public String getMarketNews(String topic, String countryCode){
+    public String getMarketNews(String topic, String countryCode) {
         logger.info("--- TOOL CALLED: getKenyanMarketNews ---");
 
         final String url = "https://newsdata.io/api/1/news?apikey=" + this.newsApiKey +
@@ -81,16 +84,16 @@ public class ExternalDataToolService {
         }
     }
 
-   @Tool(description = "Schedules a new recurring task for the agent to perform...")
-   public String createTask(String prompt, String cronExpression){
-        try{
+    @Tool(description = "Schedules a new recurring task for the agent to perform...")
+    public String createTask(String prompt, String cronExpression) {
+        try {
             User currentUser = getCurrentAuthenticatedUser();
 
             logger.info("--- TOOL CALLED: createTask ---");
 
             String correctedCron = cronExpression;
             String[] cronParts = cronExpression.trim().split("\\s+");
-            if(cronParts.length == 5){
+            if (cronParts.length == 5) {
                 correctedCron = "0 " + cronExpression;
                 logger.warn("Corrected 5-field cron from LLM to 6-field cron: {}", correctedCron);
             }
@@ -105,44 +108,44 @@ public class ExternalDataToolService {
 
             return "Task successfully scheduled for user " + currentUser.getUsername()
                     + ". The next run will be at: " + firstRunTime;
-        }catch(Exception e){
+        } catch (Exception e) {
             logger.error("Error scheduling task: {}", e.getMessage());
             return "Error scheduling task: " + e.getMessage();
         }
-   }
+    }
 
+    @Tool(description = "Call this tool as the FINAL step to publish a completed text post to Facebook...")
+    // Add the User parameter to the method signature
+    public String postToFacebook(String content, User user) {
+        try {
+            // The user is now passed in directly.
+            logger.info("--- TOOL CALLED: postToFacebook for user {} ---", user.getUsername());
 
-    @Tool(description =
-            "Call this tool as the FINAL step to publish a completed text post to Facebook...")
-    public String postToFacebook(String content){
-        try{
-            User currentUser = getCurrentAuthenticatedUser();
-            logger.info("--- TOOL CALLED: postToFacebook ---");
-
-            saveSocialMediaPost(content, "Facebook", currentUser);
-
-            facebookService.postToUserFirstPage(currentUser.getUsername(), content);
+            // Use the passed-in user object
+            saveSocialMediaPost(content, "Facebook", user);
+            facebookService.postToUserFirstPage(user.getUsername(), content);
 
             return "The post was successfully saved internally and published to Facebook.";
-        }catch(Exception e){
+        } catch (Exception e) {
             logger.error("Error posting to Facebook: {}", e.getMessage());
             return "Error posting to Facebook: " + e.getMessage();
         }
     }
 
-    private User getCurrentAuthenticatedUser(){
+    private User getCurrentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if(authentication == null || !authentication.isAuthenticated()){
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new SecurityException("User is not authenticated or authentication context is missing.");
         }
         String username = authentication.getName();
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException
-                        ("Authenticated user '" + username + "' not found in database."));
+                .orElseThrow(
+                        () -> new RuntimeException("Authenticated user '" + username + "' not found in database."));
     }
 
-    private SocialMediaPost saveSocialMediaPost(String content, String platform, User currentUser){
-        logger.info("Saving generated post for platform '{}' to the database for user '{}'.", platform, currentUser.getUsername());
+    private SocialMediaPost saveSocialMediaPost(String content, String platform, User currentUser) {
+        logger.info("Saving generated post for platform '{}' to the database for user '{}'.", platform,
+                currentUser.getUsername());
         SocialMediaPost newPost = new SocialMediaPost();
         newPost.setContent(content);
         newPost.setPlatform(platform);
@@ -151,7 +154,5 @@ public class ExternalDataToolService {
         newPost.setIsApprovedByUser(true);
         return socialMediaPostRepository.save(newPost);
     }
-
-
 
 }

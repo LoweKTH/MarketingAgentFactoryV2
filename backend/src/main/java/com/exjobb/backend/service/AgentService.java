@@ -117,7 +117,7 @@ public class AgentService {
                         break;
                     case "postToFacebook":
                         String contentToPost = (String) executionContext.get("generatedContent");
-                        finalResult = externalDataToolService.postToFacebook(contentToPost);
+                        finalResult = externalDataToolService.postToFacebook(contentToPost, user);
                         break;
                     default:
                         logger.warn("--- ORCHESTRATOR: Unknown tool in plan: {} ---", step.tool());
