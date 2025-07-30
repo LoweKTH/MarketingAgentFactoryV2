@@ -39,7 +39,8 @@ public class FacebookService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    public FacebookService(UserService userService, FacebookTokenRepository facebookTokenRepository, FacebookPageTokenRepository facebookPageTokenRepository) {
+    public FacebookService(UserService userService, FacebookTokenRepository facebookTokenRepository,
+            FacebookPageTokenRepository facebookPageTokenRepository) {
         this.userService = userService;
         this.facebookTokenRepository = facebookTokenRepository;
         this.facebookPageTokenRepository = facebookPageTokenRepository;
@@ -80,7 +81,8 @@ public class FacebookService {
         FacebookToken token = existingToken.orElse(new FacebookToken());
         token.setUser(user);
         token.setAccessToken(accessToken);
-        // The user access token from the initial auth does not have an expiry if it's a short-lived one.
+        // The user access token from the initial auth does not have an expiry if it's a
+        // short-lived one.
         // It's better to manage long-lived tokens for server-side usage.
         // For simplicity, we are saving it as is.
         facebookTokenRepository.save(token);
@@ -102,7 +104,9 @@ public class FacebookService {
     }
 
     private void savePageToken(User user, String pageId, String pageName, String accessToken) {
-        Optional<FacebookPageToken> existing = facebookPageTokenRepository.findByPageId(pageId);
+        // Use the new method to find a token by both User and PageId
+        Optional<FacebookPageToken> existing = facebookPageTokenRepository.findByUserAndPageId(user, pageId);
+
         FacebookPageToken token = existing.orElse(new FacebookPageToken());
         token.setUser(user);
         token.setPageId(pageId);
@@ -130,7 +134,8 @@ public class FacebookService {
                 .orElseThrow(() -> new RuntimeException("Facebook access token not found."));
 
         if (!isTokenValid(userAccessToken)) {
-            throw new RuntimeException("Facebook access token expired or invalid. Please reconnect your Facebook account.");
+            throw new RuntimeException(
+                    "Facebook access token expired or invalid. Please reconnect your Facebook account.");
         }
 
         return postToPage(pages.get(0).getPageId(), message);

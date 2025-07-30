@@ -10,4 +10,5 @@ import java.util.List;
 public interface FacebookPageTokenRepository extends JpaRepository<FacebookPageToken, Long> {
     Optional<FacebookPageToken> findByPageId(String pageId);
     List<FacebookPageToken> findAllByUser(User user);
+    Optional<FacebookPageToken> findByUserAndPageId(User user, String pageId);
 }

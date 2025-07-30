@@ -455,18 +455,18 @@ public class TwitterService {
     }
 
     // Add this method to your TwitterOAuthService class
-    public boolean isTwitterConnected(User user) {
+     public boolean isTwitterConnected(User user) {
         if (user == null) {
             return false;
         }
-        Optional<TwitterToken> twitterTokenOptional = twitterTokenRepository.findByUser(user);
-        if (twitterTokenOptional.isPresent()) {
-            TwitterToken token = twitterTokenOptional.get();
-            // Check if accessToken is not null or empty and if it's still potentially valid
-            // You might want to call checkAndRefreshToken here as well to ensure it's truly valid
-            return token.getAccessToken() != null && !token.getAccessToken().isEmpty();
-        }
-        return false;
+        
+        Optional<TwitterToken> twitterTokenOptional = checkAndRefreshToken(user); // Use your existing method
+
+        // If checkAndRefreshToken returns an Optional with a token, it means it's valid or successfully refreshed.
+        // Then, check if the accessToken itself is present and not empty.
+        return twitterTokenOptional.isPresent() 
+               && twitterTokenOptional.get().getAccessToken() != null 
+               && !twitterTokenOptional.get().getAccessToken().isEmpty();
     }
 
     public static class AccessTokenResponse {
