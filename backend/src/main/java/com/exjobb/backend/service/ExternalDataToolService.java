@@ -28,15 +28,18 @@ public class ExternalDataToolService {
     private final String newsApiKey;
     private final ScheduledTaskRepository scheduledTaskRepository;
     private final UserRepository userRepository;
+    private final FacebookService facebookService;
 
     public ExternalDataToolService(SocialMediaPostRepository postRepository,
                                    @Value("${news.api.key}") String newsApiKey,
                                    ScheduledTaskRepository scheduledTaskRepository,
-                                   UserRepository userRepository){
+                                   UserRepository userRepository,
+                                   FacebookService facebookService){
         this.postRepository = postRepository;
         this.newsApiKey = newsApiKey;
         this.scheduledTaskRepository = scheduledTaskRepository;
         this.userRepository = userRepository;
+        this.facebookService = facebookService;
         logger.info("News API key loaded: {}", newsApiKey);
     }
 
@@ -117,6 +120,31 @@ public class ExternalDataToolService {
         } catch (IllegalArgumentException e) {
             logger.error("Invalid cron expression provided: {}", cronExpression, e);
             return "Error: The provided schedule is invalid. Please use a valid cron expression.";
+        }
+    }
+
+
+    @Tool(description = "Publishes a given text content to the user's connected Facebook page." +
+            " Use this when the user explicitly asks to post something to Facebook.")
+    public String postToFacebook(String content){
+        logger.info("--- TOOL CALLED: postToFacebook ---");
+
+        // 1st Get logged in user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return "Error: User is not authenticated. Cannot post to Facebook.";
+        }
+        String username = authentication.getName();
+
+        try{
+            facebookService.postToUserFirstPage(username, content);
+            return "The post was successfully posted to your Facebook page.";
+        }catch(IllegalStateException e){
+            logger.error("Could not post to Facebook for user {}: {}", username, e.getMessage());
+            return "Error: " + e.getMessage() + ". Please ensure you have exactly one Facebook page connected.";
+        }catch(Exception e){
+            logger.error("An unexpected error occurred while posting to Facebook for user {}: {}", username, e.getMessage());
+            return "Error: An unexpected error occurred while posting to Facebook.";
         }
     }
 

@@ -43,6 +43,47 @@ public class AgentService {
     }
 
     /**
+     * Executes a non-interactive, standalone task for a given user.
+     * This method does NOT create or save any chat messages. Its only goal is to
+     * use the agent to produce and save a SocialMediaPost
+     * @param prompt The instruction for the agent
+     * @param user The user context for the task.
+     */
+    public void executeStandaloneTask(String prompt, User user){
+        // vi skickar bara den specifika uppgiften till agenten, utan någon tidigare historik
+        // master-prompten ger den allmäna instruktioner
+
+        String masterPrompt = createMasterPrompt(prompt);
+
+        logger.info("--- STANDALONE EXECUTION: Sending prompt to LLM for user '{}' ---", user.getUsername());
+        String agentResponse = this.geminiChatClient.prompt()
+                .user(masterPrompt)
+                .call()
+                .content();
+        logger.info("--- STANDALONE EXECUTION: Response received from LLM ---");
+
+        // Vi återanvänder exakt samma logik som förut för att parsa och spara inlägget
+        String trimmedResponse = agentResponse.trim();
+        final String postTag = "[POST_GENERATED]";
+        if (trimmedResponse.startsWith(postTag)) {
+            logger.info("Agent generated a final post. Processing and saving to database.");
+            Pattern pattern = Pattern.compile("\\[POST_GENERATED\\]\\[(.*?)\\]");
+            Matcher matcher = pattern.matcher(trimmedResponse);
+
+            if (matcher.find()) {
+                String platform = matcher.group(1);
+                String content = trimmedResponse.substring(matcher.end()).trim();
+                saveSocialMediaPost(content, platform, user); // Använder den user som skickades med
+            } else {
+                logger.warn("Agent used the POST_GENERATED tag but the format was incorrect. Not saving post.");
+            }
+        } else {
+            logger.warn("Agent did not produce a post with the required format. Response was: {}", agentResponse);
+        }
+
+    }
+
+    /**
      * Main method which handles all conversational logic with one single, powerful prompt.
      * @param request
      * @param currentUser

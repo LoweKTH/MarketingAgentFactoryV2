@@ -25,50 +25,41 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * Säkerhetskedja #1 (Körs först): Hanterar helt publika endpoints.
-     * Ingen säkerhet appliceras på dessa sökvägar.
-     */
     @Bean
     @Order(1)
     public SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
         http
                 // Denna kedja agerar BARA på dessa specifika sökvägar
-                .securityMatcher("/api/auth/**", "/mcp/**", "/h2-console/**", "/actuator/**")
+                .securityMatcher("/api/auth/register", "/api/auth/login", "/api/auth/logout") // <--- Adjust this line
                 .authorizeHttpRequests(authorize -> authorize
                         // Tillåt alla anrop som matchar ovanstående
                         .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .csrf(AbstractHttpConfigurer::disable) // Stäng av CSRF helt för dessa endpoints
-                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)); // För H2-konsolen
+
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
 
         return http.build();
     }
 
-    /**
-     * Säkerhetskedja #2 (Körs efter #1): Vår vanliga, säkra JWT-kedja.
-     * Hanterar alla andra anrop som inte matchades av den första kedjan.
-     */
+    // privateEndpointsFilterChain remains the same
     @Bean
     @Order(2)
     public SecurityFilterChain privateEndpointsFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        // Era befintliga roll-baserade regler
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/user/**").hasRole("USER")
-                        // Alla andra anrop som når denna kedja måste vara autentiserade
+                        // Now, /api/auth/twitter/status will be caught here and require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // CSRF är onödigt för ett stateless JWT API, så vi kan stänga av det helt här
                 .csrf(AbstractHttpConfigurer::disable)
-                // Inaktivera de inloggningsmetoder vi inte använder
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                // Lägg till ert JWT-filter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -1,0 +1,61 @@
+package com.exjobb.backend.controller;
+
+import com.exjobb.backend.dto.ScheduledTaskDTO;
+import com.exjobb.backend.entity.User; // Assuming you have a User entity that implements UserDetails
+import com.exjobb.backend.service.TaskService;
+import com.exjobb.backend.service.UserService;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/tasks")
+public class TaskController {
+
+    private final TaskService scheduledTaskService;
+
+    private final UserService userService;
+
+    public TaskController(TaskService scheduledTaskService, UserService userService) {
+        this.scheduledTaskService = scheduledTaskService;
+        this.userService = userService;
+    }
+
+    /**
+     * GET /api/tasks : Get all scheduled tasks for the currently authenticated user.
+     * The user is identified from the Spring Security context.
+     *
+     * @param user The authenticated user principal.
+     * @return the ResponseEntity with status 200 (OK) and the list of scheduled tasks.
+     */
+    @GetMapping
+    public ResponseEntity<List<ScheduledTaskDTO>> getMyTasks(Authentication authentication) {
+        String username = authentication.getName();
+        System.out.println("Username: " + username);
+        User currentUser = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+
+        List<ScheduledTaskDTO> tasks = scheduledTaskService.getTasksForUser(currentUser.getId());
+        return ResponseEntity.ok(tasks);
+    }
+
+    /**
+     * PUT /api/tasks/{taskId}/toggle : Toggles the active status of a task.
+     *
+     * @param taskId The ID of the task to toggle.
+     * @param authentication The authenticated user principal.
+     * @return the ResponseEntity with status 200 (OK) and the updated task DTO.
+     */
+    @PutMapping("/{taskId}/toggle")
+    public ResponseEntity<ScheduledTaskDTO> toggleTask(@PathVariable Long taskId, Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+        ScheduledTaskDTO updatedTask = scheduledTaskService.toggleTaskStatus(taskId, currentUser.getId());
+        return ResponseEntity.ok(updatedTask);
+    }
+}

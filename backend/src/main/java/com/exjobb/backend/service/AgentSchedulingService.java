@@ -30,7 +30,7 @@ public class AgentSchedulingService {
     }
 
     // Run every minute to see if any tasks should be started
-    @Scheduled(fixedRate = 300000)
+    @Scheduled(fixedRate = 30000)
     @Transactional
     public void executeDueTasks(){
         logger.info("--- SCHEDULER: Checking for due tasks... ---");
@@ -47,7 +47,7 @@ public class AgentSchedulingService {
 
             // Create request and run agent with prompt from database
             ChatMessageRequest request = new ChatMessageRequest(task.getPrompt(), null);
-            agentService.handleChatMessage(request, task.getUser());
+            agentService.executeStandaloneTask(task.getPrompt(), task.getUser());
 
             // Update task for next run
             task.setLastRunTime(LocalDateTime.now());
