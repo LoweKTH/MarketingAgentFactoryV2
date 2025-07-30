@@ -1,6 +1,7 @@
 package com.exjobb.backend.service;
 
 import com.exjobb.backend.entity.ScheduledTask;
+import com.exjobb.backend.entity.SocialMediaPost;
 import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.ScheduledTaskRepository;
 import com.exjobb.backend.repository.SocialMediaPostRepository;
@@ -29,17 +30,20 @@ public class ExternalDataToolService {
     private final ScheduledTaskRepository scheduledTaskRepository;
     private final UserRepository userRepository;
     private final FacebookService facebookService;
+    private final SocialMediaPostRepository socialMediaPostRepository;
 
     public ExternalDataToolService(SocialMediaPostRepository postRepository,
                                    @Value("${news.api.key}") String newsApiKey,
                                    ScheduledTaskRepository scheduledTaskRepository,
                                    UserRepository userRepository,
-                                   FacebookService facebookService){
+                                   FacebookService facebookService,
+                                   SocialMediaPostRepository socialMediaPostRepository){
         this.postRepository = postRepository;
         this.newsApiKey = newsApiKey;
         this.scheduledTaskRepository = scheduledTaskRepository;
         this.userRepository = userRepository;
         this.facebookService = facebookService;
+        this.socialMediaPostRepository = socialMediaPostRepository;
         logger.info("News API key loaded: {}", newsApiKey);
     }
 
@@ -77,75 +81,77 @@ public class ExternalDataToolService {
         }
     }
 
-    @Tool(description = "Schedules a new recurring task for the agent to perform. " +
-            "Use this when a user asks for an action to be repeated on a schedule (e.g., 'every day', 'every 12 hours')")
-    public String createTask(String prompt, String cronExpression){
+   @Tool(description = "Schedules a new recurring task for the agent to perform...")
+   public String createTask(String prompt, String cronExpression){
+        try{
+            User currentUser = getCurrentAuthenticatedUser();
 
-        // 1st, get the current authentication information from spring security
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            logger.error("Authentication object not found or user is not authenticated.");
-            return "Error: You must be authenticated to schedule a task.";
-        }
-        
-        String username = authentication.getName();
-        
-        // 2nd, get full user-entity from db
-        User currentUser = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException
-                        ("Authenticated user '" + username + "' not found in database."));
+            logger.info("--- TOOL CALLED: createTask ---");
 
+            String correctedCron = cronExpression;
+            String[] cronParts = cronExpression.trim().split("\\s+");
+            if(cronParts.length == 5){
+                correctedCron = "0 " + cronExpression;
+                logger.warn("Corrected 5-field cron from LLM to 6-field cron: {}", correctedCron);
+            }
 
-        logger.info("--- TOOL CALLED: createTask for user '{}' with schedule '{}' ---",
-                currentUser.getUsername(), cronExpression);
+            ScheduledTask newTask = new ScheduledTask(prompt, correctedCron, currentUser);
 
-        String correctedCron = cronExpression;
-        String[] cronParts = cronExpression.trim().split("\\s+");
-        if(cronParts.length == 5){
-            // If we got an expression with 5 cronParts, add a 0 for seconds in the beginning
-            correctedCron = "0 " + cronExpression;
-            logger.warn("Corrected 5-field cron from LLM to 6-field cron: '{}'", correctedCron);
-        }
-
-        ScheduledTask newTask = new ScheduledTask(prompt, correctedCron, currentUser);
-
-        try {
             CronExpression cron = CronExpression.parse(newTask.getCronExpression());
             LocalDateTime firstRunTime = cron.next(LocalDateTime.now());
             newTask.setNextRunTime(firstRunTime);
 
             scheduledTaskRepository.save(newTask);
 
-            return "Task successfully scheduled for user " + currentUser.getUsername() + ". The next run will be at: " + firstRunTime;
-        } catch (IllegalArgumentException e) {
-            logger.error("Invalid cron expression provided: {}", cronExpression, e);
-            return "Error: The provided schedule is invalid. Please use a valid cron expression.";
+            return "Task successfully scheduled for user " + currentUser.getUsername()
+                    + ". The next run will be at: " + firstRunTime;
+        }catch(Exception e){
+            logger.error("Error scheduling task: {}", e.getMessage());
+            return "Error scheduling task: " + e.getMessage();
+        }
+   }
+
+
+    @Tool(description =
+            "Call this tool as the FINAL step to publish a completed text post to Facebook...")
+    public String postToFacebook(String content){
+        try{
+            User currentUser = getCurrentAuthenticatedUser();
+            logger.info("--- TOOL CALLED: postToFacebook ---");
+
+            saveSocialMediaPost(content, "Facebook", currentUser);
+
+            facebookService.postToUserFirstPage(currentUser.getUsername(), content);
+
+            return "The post was successfully saved internally and published to Facebook.";
+        }catch(Exception e){
+            logger.error("Error posting to Facebook: {}", e.getMessage());
+            return "Error posting to Facebook: " + e.getMessage();
         }
     }
 
-
-    @Tool(description = "Publishes a given text content to the user's connected Facebook page." +
-            " Use this when the user explicitly asks to post something to Facebook.")
-    public String postToFacebook(String content){
-        logger.info("--- TOOL CALLED: postToFacebook ---");
-
-        // 1st Get logged in user
+    private User getCurrentAuthenticatedUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return "Error: User is not authenticated. Cannot post to Facebook.";
+        if(authentication == null || !authentication.isAuthenticated()){
+            throw new SecurityException("User is not authenticated or authentication context is missing.");
         }
         String username = authentication.getName();
-
-        try{
-            facebookService.postToUserFirstPage(username, content);
-            return "The post was successfully posted to your Facebook page.";
-        }catch(IllegalStateException e){
-            logger.error("Could not post to Facebook for user {}: {}", username, e.getMessage());
-            return "Error: " + e.getMessage() + ". Please ensure you have exactly one Facebook page connected.";
-        }catch(Exception e){
-            logger.error("An unexpected error occurred while posting to Facebook for user {}: {}", username, e.getMessage());
-            return "Error: An unexpected error occurred while posting to Facebook.";
-        }
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException
+                        ("Authenticated user '" + username + "' not found in database."));
     }
+
+    private SocialMediaPost saveSocialMediaPost(String content, String platform, User currentUser){
+        logger.info("Saving generated post for platform '{}' to the database for user '{}'.", platform, currentUser.getUsername());
+        SocialMediaPost newPost = new SocialMediaPost();
+        newPost.setContent(content);
+        newPost.setPlatform(platform);
+        newPost.setUser(currentUser);
+        newPost.setEngagementScore(0.0);
+        newPost.setIsApprovedByUser(true);
+        return socialMediaPostRepository.save(newPost);
+    }
+
+
 
 }

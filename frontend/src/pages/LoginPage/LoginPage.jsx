@@ -1,4 +1,3 @@
-// LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,9 +42,9 @@ function LoginPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-gray-100 p-4">
-            <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-200">
-                <h2 className="text-3xl font-bold text-center text-indigo-700 mb-8">Login / Sign Up</h2>
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-950 to-blue-950 font-sans p-4"> {/* Applied the dark gradient background */}
+            <div className="bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-700">
+                <h2 className="text-3xl font-bold text-center text-indigo-500 mb-8">Login / Sign Up</h2>
 
                 <MessageDisplay message={message} />
 

@@ -31,3 +31,8 @@ export const toggleTaskActiveState = async (taskId) => {
         throw error.response?.data?.message || error.message || "Failed to toggle task active state";
     }
 };
+
+
+export const deleteTask = async (taskId) => {
+
+}

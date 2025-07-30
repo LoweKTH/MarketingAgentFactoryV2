@@ -12,30 +12,24 @@ import PostButton from './PostButton.jsx'; // Import the PostButton component
 function PreviewPanel({ content, onPostClick, isPosting }) { // Destructure onPostClick and isPosting
     return (
         <div className="flex flex-col h-full p-4">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">Generated Content Preview</h2>
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-auto flex-grow overflow-hidden flex flex-col">
+            <h2 className="text-2xl font-bold mb-6 text-white text-center">Generated Content Preview</h2> {/* Adjusted text color */}
+            <div className="bg-gray-700 rounded-lg shadow-lg p-6 w-full max-w-md mx-auto flex-grow overflow-hidden flex flex-col"> {/* Darker background */}
                 {content ? (
                     <>
                         {/* Simulate a social media post structure */}
                         <div className="flex items-center mb-4">
-                            <div className="w-10 h-10 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                            <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-lg"> {/* Adjusted background color */}
                                 AI
                             </div>
                             <div className="ml-3">
-                                <p className="font-semibold text-gray-900">AI Agent</p>
-                                <p className="text-sm text-gray-500">Just now</p>
+                                <p className="font-semibold text-white">AI Agent</p> {/* Adjusted text color */}
+                                <p className="text-sm text-gray-300">Just now</p> {/* Adjusted text color */}
                             </div>
                         </div>
                         {/* Adjusted max-h for dynamic height, added overflow-y-auto */}
                         <div className="flex-grow overflow-y-auto pr-2">
-                            <p className="text-gray-700 whitespace-pre-wrap">{content}</p>
+                            <p className="text-gray-200 whitespace-pre-wrap">{content}</p> {/* Adjusted text color */}
                         </div>
-                        {/* Removed Like, Comment, Share */}
-                        {/* <div className="mt-4 text-gray-500 text-sm flex justify-between">
-                            <span>❤️ Like</span>
-                            <span>💬 Comment</span>
-                            <span>🔄 Share</span>
-                        </div> */}
                         {/* Add the PostButton here */}
                         <div className="mt-6"> {/* Added margin-top for spacing */}
                             <PostButton
@@ -45,7 +39,7 @@ function PreviewPanel({ content, onPostClick, isPosting }) { // Destructure onPo
                         </div>
                     </>
                 ) : (
-                    <div className="text-center text-gray-500 py-10 flex-grow flex items-center justify-center">
+                    <div className="text-center text-gray-400 py-10 flex-grow flex items-center justify-center"> {/* Adjusted text color */}
                         Your generated social media content will appear here.
                         <br />
                         Start by chatting with the AI!

@@ -160,14 +160,14 @@ function ChatInterface({
     };
 
     return (
-        <div className="flex flex-col h-full bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="flex flex-col h-full bg-gray-800 rounded-lg shadow-md overflow-hidden"> {/* Darker background */}
             {/* Chat Display Area */}
             <div
                 ref={chatContainerRef}
                 className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 break-words custom-scrollbar"
             >
                 {messages.length === 0 && !isLoading ? ( // Only show empty state if not loading
-                    <div className="text-center text-gray-500 py-10">
+                    <div className="text-center text-gray-400 py-10"> {/* Adjusted text color */}
                         Tell me what kind of social media content you need!
                     </div>
                 ) : (
@@ -181,8 +181,8 @@ function ChatInterface({
                             <div
                                 className={`p-3 rounded-lg max-w-[70%] ${
                                     message.sender === 'user'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 text-gray-800'
+                                        ? 'bg-indigo-600 text-white' // Darker blue for user
+                                        : 'bg-gray-700 text-gray-200' // Darker gray for AI
                                 } shadow-sm`}
                                 // Use dangerouslySetInnerHTML to render Markdown
                                 dangerouslySetInnerHTML={{ __html: renderMarkdown(message.text) }}
@@ -192,7 +192,7 @@ function ChatInterface({
                 )}
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="p-3 rounded-lg bg-gray-200 text-gray-800 shadow-sm">
+                        <div className="p-3 rounded-lg bg-gray-700 text-gray-200 shadow-sm"> {/* Darker background for loading bubble */}
                             <div className="dot-flashing"></div> {/* Loading animation */}
                         </div>
                     </div>
@@ -200,19 +200,19 @@ function ChatInterface({
             </div>
 
             {/* Input Area */}
-            <div className="border-t border-gray-200 p-4 flex items-center">
+            <div className="border-t border-gray-700 p-4 flex items-center bg-gray-800"> {/* Darker border and background */}
                 <input
                     type="text"
                     value={input}
                     onChange={handleInputChange}
                     onKeyPress={handleKeyPress}
-                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 p-3 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-700 text-white placeholder-gray-400"
                     placeholder={isLoading ? "Generating response..." : "Type your request..."}
                     disabled={isLoading}
                 />
                 <button
                     onClick={handleSendMessage}
-                    className="ml-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed" // Adjusted button color
                     disabled={isLoading || input.trim() === ''} // Disable if input is empty or loading
                 >
                     {isLoading ? 'Sending...' : 'Send'}
@@ -226,8 +226,8 @@ function ChatInterface({
                     width: 10px;
                     height: 10px;
                     border-radius: 5px;
-                    background-color: #9880ff;
-                    color: #9880ff;
+                    background-color: #6366f1; /* Adjusted color for dark theme */
+                    color: #6366f1;
                     animation: dotFlashing 1s infinite linear alternate;
                     animation-delay: 0.5s;
                 }
@@ -242,8 +242,8 @@ function ChatInterface({
                     width: 10px;
                     height: 10px;
                     border-radius: 5px;
-                    background-color: #9880ff;
-                    color: #9880ff;
+                    background-color: #6366f1; /* Adjusted color for dark theme */
+                    color: #6366f1;
                     animation: dotFlashing 1s infinite linear alternate;
                     animation-delay: 0s;
                 }
@@ -252,18 +252,18 @@ function ChatInterface({
                     width: 10px;
                     height: 10px;
                     border-radius: 5px;
-                    background-color: #9880ff;
-                    color: #9880ff;
+                    background-color: #6366f1; /* Adjusted color for dark theme */
+                    color: #6366f1;
                     animation: dotFlashing 1s infinite linear alternate;
                     animation-delay: 1s;
                 }
                 @keyframes dotFlashing {
                     0% {
-                        background-color: #9880ff;
+                        background-color: #6366f1; /* Adjusted color for dark theme */
                     }
                     50%,
                     100% {
-                        background-color: #ebe6ff;
+                        background-color: #a78bfa; /* Adjusted color for dark theme */
                     }
                 }
                 /* Custom scrollbar styles */
@@ -274,22 +274,22 @@ function ChatInterface({
                     }
 
                     &::-webkit-scrollbar-track {
-                        background: #f1f1f1;
+                        background: #374151; /* Darker track */
                         border-radius: 10px;
                     }
 
                     &::-webkit-scrollbar-thumb {
-                        background: #888;
+                        background: #6b7280; /* Darker thumb */
                         border-radius: 10px;
                     }
 
                     &::-webkit-scrollbar-thumb:hover {
-                        background: #555;
+                        background: #9ca3af; /* Lighter hover thumb */
                     }
 
                     /* For Firefox */
                     scrollbar-width: thin; /* "auto" or "thin" */
-                    scrollbar-color: #888 #f1f1f1; /* thumb and track color */
+                    scrollbar-color: #6b7280 #374151; /* thumb and track color */
                 }
             `}</style>
         </div>

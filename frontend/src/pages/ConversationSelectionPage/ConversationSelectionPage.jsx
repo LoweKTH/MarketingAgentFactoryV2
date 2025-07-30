@@ -56,10 +56,10 @@ function ConversationSelectionPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-950 flex items-center justify-center"> {/* Darker background */}
                 <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-600 text-lg">Loading your conversations...</p>
+                    <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" /> {/* Adjusted loader color */}
+                    <p className="text-gray-300 text-lg">Loading your conversations...</p> {/* Adjusted text color */}
                 </div>
             </div>
         );
@@ -67,14 +67,14 @@ function ConversationSelectionPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-                <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+            <div className="min-h-screen bg-gray-950 flex items-center justify-center"> {/* Darker background */}
+                <div className="bg-gray-800 rounded-xl shadow-lg p-8 max-w-md text-center"> {/* Darker card background */}
                     <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Oops! Something went wrong</h2>
-                    <p className="text-gray-600 mb-6">{error}</p>
+                    <h2 className="text-xl font-semibold text-white mb-2">Oops! Something went wrong</h2> {/* Adjusted text color */}
+                    <p className="text-gray-300 mb-6">{error}</p> {/* Adjusted text color */}
                     <button
                         onClick={handleRetry}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
                     >
                         Try Again
                     </button>
@@ -84,14 +84,14 @@ function ConversationSelectionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-950 dark:to-blue-950 font-sans"> {/* Dark gradient background */}
             <div className="container mx-auto px-6 py-12 max-w-4xl">
                 {/* Header Section */}
                 <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                    <h1 className="text-4xl font-bold text-white mb-4"> {/* Adjusted text color */}
                         Your Conversations
                     </h1>
-                    <p className="text-gray-600 text-lg">
+                    <p className="text-gray-300 text-lg"> {/* Adjusted text color */}
                         Continue where you left off or start something new
                     </p>
                 </div>
@@ -99,7 +99,7 @@ function ConversationSelectionPage() {
                 {/* New Conversation Button */}
                 <button
                     onClick={handleNewConversation}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out mb-8 text-lg flex items-center justify-center gap-3 transform hover:-translate-y-1"
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out mb-8 text-lg flex items-center justify-center gap-3 transform hover:-translate-y-1"
                 >
                     <Plus className="w-6 h-6" />
                     Start a New Conversation
@@ -114,31 +114,31 @@ function ConversationSelectionPage() {
                             placeholder="Search conversations..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+                            className="w-full pl-12 pr-4 py-4 bg-gray-700 border border-gray-600 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
                         />
                     </div>
                 )}
 
                 {/* Conversations List */}
                 {conversations.length === 0 ? (
-                    <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                        <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-6" />
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+                    <div className="bg-gray-800 rounded-xl shadow-sm p-12 text-center"> {/* Darker card background */}
+                        <MessageCircle className="w-16 h-16 text-gray-600 mx-auto mb-6" /> {/* Adjusted icon color */}
+                        <h2 className="text-2xl font-semibold text-white mb-3"> {/* Adjusted text color */}
                             No conversations yet
                         </h2>
-                        <p className="text-gray-600 text-lg mb-8">
+                        <p className="text-gray-300 text-lg mb-8"> {/* Adjusted text color */}
                             Start your first conversation and it will appear here
                         </p>
                         <button
                             onClick={handleNewConversation}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2"
                         >
                             <Plus className="w-5 h-5" />
                             Get Started
                         </button>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="bg-gray-800 rounded-xl shadow-sm p-6"> {/* Darker card background */}
                         <ConversationList
                             conversations={conversations}
                             onSelectConversation={handleSelectConversation}

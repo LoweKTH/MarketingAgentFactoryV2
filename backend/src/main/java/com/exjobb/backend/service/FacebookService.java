@@ -115,6 +115,8 @@ public class FacebookService {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
+        System.out.println(user.getUsername());
+
         List<FacebookPageToken> pages = facebookPageTokenRepository.findAllByUser(user);
         if (pages.isEmpty()) {
             throw new IllegalStateException("No Facebook pages found for this user");

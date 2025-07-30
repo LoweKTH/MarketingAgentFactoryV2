@@ -6,6 +6,7 @@ import com.exjobb.backend.entity.ScheduledTask;
 import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.ScheduledTaskRepository;
 import com.exjobb.backend.utils.CronExpressionTranslator; // <-- NEW IMPORT
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.support.CronExpression;
@@ -76,5 +77,18 @@ public class TaskService {
         // Notera: Detta antar att ni har en 'cronExpressionTranslator'-komponent tillgänglig
         String humanReadableCron = cronExpressionTranslator.translate(updatedTask.getCronExpression());
         return ScheduledTaskDTO.fromEntity(updatedTask, humanReadableCron);
+    }
+
+    @Transactional
+    public void deleteTask(Long taskId, Long userId){
+        ScheduledTask task = scheduledTaskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with id: " + taskId));
+
+        if(!task.getUser().getId().equals(userId)){
+            throw new AccessDeniedException("User does not have permission to modify this task");
+        }
+
+        scheduledTaskRepository.delete(task);
+        logger.info("Task {} deleted for user {}.", taskId, userId);
     }
 }

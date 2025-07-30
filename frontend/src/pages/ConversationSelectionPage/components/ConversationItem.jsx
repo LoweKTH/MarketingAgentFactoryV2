@@ -22,7 +22,7 @@ function ConversationItem({ conversation, onSelect }) {
     return (
         <div
             onClick={() => onSelect(conversation.id)}
-            className="group bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out cursor-pointer transform hover:-translate-y-1"
+            className="group bg-gray-700 border border-gray-600 rounded-xl p-6 shadow-sm hover:shadow-lg hover:border-indigo-500 transition-all duration-200 ease-in-out cursor-pointer transform hover:-translate-y-1"
             role="button"
             tabIndex={0}
             onKeyDown={(e) => {
@@ -35,34 +35,34 @@ function ConversationItem({ conversation, onSelect }) {
             <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                            <MessageCircle className="w-5 h-5 text-blue-600" />
+                        <div className="p-2 bg-gray-600 rounded-lg group-hover:bg-indigo-600 transition-colors"> {/* Darker icon background */}
+                            <MessageCircle className="w-5 h-5 text-indigo-400 group-hover:text-white" /> {/* Adjusted icon color */}
                         </div>
-                        <h2 className="text-lg font-semibold text-gray-900 truncate">
+                        <h2 className="text-lg font-semibold text-white truncate"> {/* Adjusted text color */}
                             {conversation.title || `Conversation ${conversation.id}`}
                         </h2>
                     </div>
 
                     {conversation.lastMessage && (
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-2 pl-11">
+                        <p className="text-sm text-gray-300 mb-3 line-clamp-2 pl-11"> {/* Adjusted text color */}
                             {conversation.lastMessage}
                         </p>
                     )}
 
-                    <div className="flex items-center gap-4 text-xs text-gray-500 pl-11">
+                    <div className="flex items-center gap-4 text-xs text-gray-400 pl-11"> {/* Adjusted text color */}
                         <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             <span>{formatDate(conversation.creationTimeStamp)}</span>
                         </div>
                         {conversation.messageCount && (
-                            <span className="bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="bg-gray-600 px-2 py-1 rounded-full text-gray-200"> {/* Darker badge background and text color */}
                                 {conversation.messageCount} messages
                             </span>
                         )}
                     </div>
                 </div>
 
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 mt-1" />
+                <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-indigo-400 transition-colors flex-shrink-0 mt-1" /> {/* Adjusted icon color */}
             </div>
         </div>
     );

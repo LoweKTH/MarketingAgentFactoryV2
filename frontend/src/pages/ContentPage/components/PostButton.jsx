@@ -16,8 +16,8 @@ function PostButton({ onClick, isLoading }) {
                 mt-4 w-full py-3 px-6 rounded-lg text-white font-semibold
                 transition-all duration-300 ease-in-out
                 ${isLoading
-                ? 'bg-blue-300 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg'
+                ? 'bg-blue-400 cursor-not-allowed' // Slightly adjusted disabled color
+                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-md hover:shadow-lg' // Adjusted active color
             }
                 flex items-center justify-center
             `}

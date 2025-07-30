@@ -10,8 +10,8 @@ function ConversationList({ conversations, onSelectConversation, searchTerm }) {
     if (filteredConversations.length === 0 && searchTerm) {
         return (
             <div className="text-center py-12">
-                <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No conversations found matching "{searchTerm}"</p>
+                <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" /> {/* Adjusted icon color */}
+                <p className="text-gray-400">No conversations found matching "{searchTerm}"</p> {/* Adjusted text color */}
             </div>
         );
     }

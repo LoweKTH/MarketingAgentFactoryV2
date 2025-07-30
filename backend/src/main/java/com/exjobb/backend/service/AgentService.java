@@ -3,17 +3,23 @@ package com.exjobb.backend.service;
 import com.exjobb.backend.dto.ChatConversationResponse;
 import com.exjobb.backend.dto.ChatMessageRequest;
 import com.exjobb.backend.dto.ChatMessageResponse;
+import com.exjobb.backend.dto.PlanStep;
 import com.exjobb.backend.entity.*;
 import com.exjobb.backend.repository.ChatConversationRepository;
 import com.exjobb.backend.repository.ChatMessageRepository;
 import com.exjobb.backend.repository.SocialMediaPostRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -28,18 +34,24 @@ public class AgentService {
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final InternalDataToolService internalDataToolService;
+    private final ExternalDataToolService externalDataToolService;
+    private final ObjectMapper objectMapper;
 
 
     public AgentService(@Qualifier("geminiChatClient") ChatClient chatClient,
                         SocialMediaPostRepository postRepository,
                         ChatConversationRepository conversationRepository,
                         ChatMessageRepository messageRepository,
-                        InternalDataToolService internalDataToolService) {
+                        InternalDataToolService internalDataToolService,
+                        ExternalDataToolService externalDataToolService,
+                        ObjectMapper objectMapper) {
         this.geminiChatClient = chatClient;
         this.postRepository = postRepository;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.internalDataToolService = internalDataToolService;
+        this.externalDataToolService = externalDataToolService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -50,37 +62,72 @@ public class AgentService {
      * @param user The user context for the task.
      */
     public void executeStandaloneTask(String prompt, User user){
-        // vi skickar bara den specifika uppgiften till agenten, utan någon tidigare historik
-        // master-prompten ger den allmäna instruktioner
 
-        String masterPrompt = createMasterPrompt(prompt);
+        // Call planner to get json plan
+        String plannerPrompt = createPlannerPrompt(prompt);
+        logger.info("--- ORCHESTRATOR: Requesting plan from Planner AI for user '{}' ---", user.getUsername());
+        String jsonPlanString = geminiChatClient.prompt().user(plannerPrompt).call().content();
+        logger.info("--- ORCHESTRATOR: Received plan: {} ---", jsonPlanString);
 
-        logger.info("--- STANDALONE EXECUTION: Sending prompt to LLM for user '{}' ---", user.getUsername());
-        String agentResponse = this.geminiChatClient.prompt()
-                .user(masterPrompt)
-                .call()
-                .content();
-        logger.info("--- STANDALONE EXECUTION: Response received from LLM ---");
 
-        // Vi återanvänder exakt samma logik som förut för att parsa och spara inlägget
-        String trimmedResponse = agentResponse.trim();
-        final String postTag = "[POST_GENERATED]";
-        if (trimmedResponse.startsWith(postTag)) {
-            logger.info("Agent generated a final post. Processing and saving to database.");
-            Pattern pattern = Pattern.compile("\\[POST_GENERATED\\]\\[(.*?)\\]");
-            Matcher matcher = pattern.matcher(trimmedResponse);
+        // Clean up Json
+        String cleanedJson = jsonPlanString;
+        if (cleanedJson.startsWith("```json")) {
+            cleanedJson = cleanedJson.substring(7); // Tar bort ```json och en eventuell ny rad
+        }
+        if (cleanedJson.endsWith("```")) {
+            cleanedJson = cleanedJson.substring(0, cleanedJson.lastIndexOf("```"));
+        }
+        cleanedJson = cleanedJson.trim();
 
-            if (matcher.find()) {
-                String platform = matcher.group(1);
-                String content = trimmedResponse.substring(matcher.end()).trim();
-                saveSocialMediaPost(content, platform, user); // Använder den user som skickades med
-            } else {
-                logger.warn("Agent used the POST_GENERATED tag but the format was incorrect. Not saving post.");
-            }
-        } else {
-            logger.warn("Agent did not produce a post with the required format. Response was: {}", agentResponse);
+        // Parse json plan
+        List<PlanStep> plan;
+        try{
+            plan = objectMapper.readValue(cleanedJson, new TypeReference<List<PlanStep>>() {});
+        }catch(JsonProcessingException e){
+            logger.error("--- ORCHESTRATOR: Failed to parse JSON plan from LLM. Aborting task.", e);
+            return;
         }
 
+        // Execute plan step by step
+        Map<String, Object> executionContext = new HashMap<>();
+        String finalResult = "Task finished with no specific results.";
+
+        for(PlanStep step : plan){
+            logger.info("--- ORCHESTRATOR: Executing step -> {}", step.tool());
+            try{
+                switch(step.tool()){
+                    case "getMarketNews":
+                        String news = externalDataToolService.getMarketNews(
+                                step.parameters().get("topic"),
+                                step.parameters().get("countryCode")
+                        );
+                        executionContext.put("newsResult", news);
+                        break;
+                    case "getTopPerformingPosts":
+                        String topPosts = internalDataToolService.getTopPerformingPosts();
+                        executionContext.put("topPostsResult", topPosts);
+                        break;
+                    case "synthesizeText":
+                        String synthesisPrompt = "Based on the following news: " + executionContext.get("newsResult")
+                                + "\n\n And this inspiration: " + executionContext.get("topPostsResult")
+                                + "\n\n" + step.parameters().get("goal");
+                        String generatedContent = geminiChatClient.prompt().user(synthesisPrompt).call().content();
+                        executionContext.put("generatedContent", generatedContent);
+                        break;
+                    case "postToFacebook":
+                        String contentToPost = (String) executionContext.get("generatedContent");
+                        finalResult = externalDataToolService.postToFacebook(contentToPost);
+                        break;
+                    default:
+                        logger.warn("--- ORCHESTRATOR: Unknown tool in plan: {} ---", step.tool());
+                }
+            }catch(Exception e){
+                logger.error("--- ORCHESTRATOR: Failed to execute step {}. Aborting task. Error: {}", step.tool(), e.getMessage());
+                return;
+            }
+        }
+        logger.info("--- ORCHESTRATOR: Plan execution finished with final result: {} ---", finalResult);
     }
 
     /**
@@ -107,77 +154,9 @@ public class AgentService {
                 .content();
         logger.info("--- RESPONSE RECEIVED FROM LLM ---");
 
-        String finalResponseForUser = agentResponse;
-        String trimmedResponse = agentResponse.trim();
-
-        final String postTag = "[POST_GENERATED]";
-        if(trimmedResponse.startsWith(postTag)){
-            logger.info("Agent generated a final post. Processing and saving to database.");
-
-            Pattern pattern = Pattern.compile("\\[POST_GENERATED\\]\\[(.*?)\\]");
-            Matcher matcher = pattern.matcher(agentResponse);
-
-            if(matcher.find()){
-                String platform = matcher.group(1); // Extracting platform, i.e. twitter
-                String content = agentResponse.substring(matcher.end()).trim();
-
-                saveSocialMediaPost(content, platform, currentUser);
-
-                finalResponseForUser = content;
-            }else{
-                logger.warn("Agent used the POST_GENERATED tag but the format was incorrect. Not saving post.");
-            }
-
-        }
-
-        saveMessage(finalResponseForUser, Role.AGENT, conversation);
+        saveMessage(agentResponse, Role.AGENT, conversation);
         return new ChatMessageResponse(agentResponse, conversation.getId());
     }
-
-    /**
-     * THE prompt that is being sent to the LLM
-     * @param conversationHistory
-     * @return
-     */
-    // I AgentService.java
-
-    private String createMasterPrompt(String conversationHistory) {
-        return """
-            You are an expert, autonomous social media marketing agent. Your goal is to fulfill the user's request by using your tools and generating content.
-
-            **--- YOUR DECISION PROCESS ---**
-
-            1.  **ANALYZE THE USER'S LATEST REQUEST.**
-                - Does the user want to **schedule a recurring task** (e.g., "every day", "every 12 hours")?
-                 If YES, your primary goal is to call the `createTask` tool. Proceed to step 2 to determine the parameters for that tool.
-                - Does the user want a **finished post right now**?
-                 If YES, your goal is to generate content with the `[POST_GENERATED]` tag. Proceed to step 2.
-                - Does the user want **information or ideas**? If YES, your goal is to provide a clean text answer. Proceed to step 2.
-
-            2.  **GATHER INFORMATION FOR THE GOAL.**
-                - To fulfill your goal, you MUST use your available tools.
-                - If the user's request involves "news", you MUST use the `getMarketNews` tool.
-                - **TOPIC RULE:** If the `getMarketNews` tool requires a `topic` and the user's request is general (e.g., "latest news"),
-                 you **MUST** use the default topic `'business OR technology'`. **DO NOT ask the user for a topic.**
-                - If the user's request mentions "tone" or "inspiration", you should also use the `getTopPerformingPosts` tool.
-
-            3.  **EXECUTE.**
-                - If your goal was to schedule a task, call the `createTask` tool now with the prompt and schedule you have determined.
-                - If your goal was to create a post or provide information,
-                 generate the final response now using the information you gathered from your tools.
-
-            **--- OUTPUT FORMATTING ---**
-            - For informational requests, provide clean text.
-            - For post creation requests, use the `[POST_GENERATED][PLATFORM]` tag.
-            - When you call the `createTask` tool, your final response to the user should be the confirmation message from that tool.
-
-            ---
-            CONVERSATION HISTORY:
-            %s
-            ---
-            """.formatted(conversationHistory);
-    }
-
 
 
     /**
@@ -205,6 +184,71 @@ public class AgentService {
         // You might want to add security check here if a user should only access their own conversations
         // e.g., if (conversationRepository.findById(conversationId).map(c -> !c.getUser().equals(currentUser)).orElse(true)) throw new AccessDeniedException;
         return messageRepository.findByConversationIdOrderByCreationTimeStampAsc(conversationId);
+    }
+
+
+    /**
+     * Creates the plan to be executed
+     * @param userRequest
+     * @return
+     */
+    private String createPlannerPrompt(String userRequest){
+        return """
+        You are an intelligent planning agent. Your task is to take a user's request and create a step-by-step plan
+         to fulfill it using a set of available tools.
+            Return the plan as a JSON array of objects. Each object must have a 'tool' name and a 'parameters' object.
+            
+            The available tools are:
+            - 'getMarketNews(topic, countryCode)'
+            - 'getTopPerformingPosts()'
+            - 'postToFacebook(content)'
+            
+            If you need to generate text based on gathered information, use the special tool name 'synthesizeText'
+             and describe the goal in a 'goal' parameter.
+            The 'postToFacebook' tool requires content that must be generated by the 'synthesizeText' step first.
+
+            User Request: "%s"
+
+            JSON Plan:
+            """.formatted(userRequest);
+    }
+
+    /**
+     * The interactive prompt that is sent to the LLM
+     * @param conversationHistory
+     * @return
+     */
+    private String createMasterPrompt(String conversationHistory){
+        return """
+        You are an expert, helpful, and collaborative social media marketing agent. Your goal is to assist the user by creating content, providing ideas, and performing actions based on their instructions.
+
+        **--- YOUR CORE BEHAVIOR ---**
+
+        1.  **GATHER INFORMATION:** When the user asks for a post or ideas, use your information-gathering tools
+         (like `getMarketNews`, `getTopPerformingPosts`) silently to get the necessary context and inspiration.
+            - **TOPIC RULE:** If `getMarketNews` needs a `topic` and the user is general, you MUST use the default topic
+             `'business OR technology'`. DO NOT ask for a topic.
+
+        2.  **HANDLE ACTION REQUESTS (VERY IMPORTANT):**
+            - Some of your tools perform irreversible actions that affect the outside world, like `postToFacebook` or `createTask`.
+            - **Before using an action tool, you MUST first present your generated content or your plan to the user and
+             ask for their explicit confirmation.**
+            - Example for posting: "Here is the draft I created based on the latest news: [the post content].
+             Shall I publish this to Facebook?"
+            - Example for scheduling: "I am ready to schedule a task to 'create a post about...'
+             every 12 hours. Is this correct?"
+            - Only after the user confirms with "yes", "okay", "go ahead" or similar, should you
+             call the action tool in your next turn.
+
+        3.  **HANDLE INFORMATION REQUESTS:**
+            - If the user only asks for information (e.g., "what are the latest headlines?"), 
+            provide the information directly and cleanly.
+
+        ---
+        CONVERSATION HISTORY:
+        %s
+        ---
+        """.formatted(conversationHistory);
     }
 
 

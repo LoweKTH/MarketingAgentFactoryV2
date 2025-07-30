@@ -1,18 +1,17 @@
-// LoginForm.jsx
 import React from 'react';
 
 function LoginForm({ username, setUsername, password, setPassword, handleSubmit }) { // Changed email to username
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1"> {/* Changed text color */}
                     Username
                 </label>
                 <input
                     type="text" // Changed type from "email" to "text"
                     id="username"
                     name="username"
-                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white placeholder-gray-400" // Updated input styles
                     placeholder="Your username" // Updated placeholder
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -21,14 +20,14 @@ function LoginForm({ username, setUsername, password, setPassword, handleSubmit 
             </div>
 
             <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1"> {/* Changed text color */}
                     Password
                 </label>
                 <input
                     type="password"
                     id="password"
                     name="password"
-                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full px-4 py-2 border border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-700 text-white placeholder-gray-400" // Updated input styles
                     placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

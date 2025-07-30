@@ -40,12 +40,11 @@ export const fetchConversationMessages = async (conversationId) => {
  * @returns {Promise<object>} A promise that resolves to the saved SocialMediaPost object.
  * @throws {Error} If the API call fails or authentication is missing.
  */
-export const saveSocialMediaPost = async (content, platform, conversationId) => {
+export const saveSocialMediaPost = async (content, conversationId) => {
     try {
         // Use axiosInstance.post()
         const response = await axiosInstance.post('/social-media-posts', { // Note: baseURL already handles '/api'
             content: content,
-            platform: platform,
             conversationId: conversationId // Pass current conversation ID if useful for linking posts
         });
 

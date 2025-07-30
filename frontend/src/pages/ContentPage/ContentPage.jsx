@@ -2,9 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ChatInterface from './components/ChatInterface.jsx';
 import PreviewPanel from './components/PreviewPanel.jsx';
-import ChatOptions from './components/ChatOptions.jsx';
+import SocialConnections from './components/SocialConnections.jsx';
+
 // Import your API functions
 import { fetchConversationMessages, saveSocialMediaPost } from '../../api/chatApi.js';
+import { getFacebookStatus, redirectToFacebookOAuth, redirectToTwitterOAuth, getTwitterStatus } from '../../api/authApi.js';
 
 /**
  * ContentPage Component (AI Agent Interface)
@@ -13,13 +15,17 @@ import { fetchConversationMessages, saveSocialMediaPost } from '../../api/chatAp
 function ContentPage() {
     const { conversationId: routeConversationId } = useParams();
     const [generatedContent, setGeneratedContent] = useState('');
-    const [selectedPlatform, setSelectedPlatform] = useState('general');
-    const [selectedTone, setSelectedTone] = useState('neutral');
     const [isLoading, setIsLoading] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
     const [currentConversationId, setCurrentConversationId] = useState(null);
     const [initialMessages, setInitialMessages] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(true);
+
+    // Social media connection states
+    const [fbConnected, setFbConnected] = useState(false);
+    const [fbStatusLoading, setFbStatusLoading] = useState(false);
+    const [twConnected, setTwConnected] = useState(false);
+    const [twStatusLoading, setTwStatusLoading] = useState(false);
 
     // Effect to set the current conversation ID when the route parameter changes
     useEffect(() => {
@@ -29,27 +35,63 @@ function ContentPage() {
     // Effect to fetch initial messages when an existing conversation is loaded
     useEffect(() => {
         if (currentConversationId) {
-            const loadMessages = async () => { // Renamed to avoid conflict with imported fetchMessages
+            const loadMessages = async () => {
                 setMessagesLoading(true);
                 try {
-                    // *** Use your imported API function here ***
                     const data = await fetchConversationMessages(currentConversationId);
                     setInitialMessages(data);
                 } catch (error) {
                     console.error("Error fetching initial messages:", error);
-                    // You might want to display an error message to the user here
-                    setInitialMessages([]); // Clear messages on error
+                    setInitialMessages([]);
                 } finally {
                     setMessagesLoading(false);
                 }
             };
-            loadMessages(); // Call the async function
+            loadMessages();
         } else {
-            // If it's a new conversation, clear any old initial messages
             setInitialMessages([]);
-            setMessagesLoading(false); // No messages to load for a new conversation
+            setMessagesLoading(false);
         }
-    }, [currentConversationId]); // Re-run when currentConversationId changes
+    }, [currentConversationId]);
+
+    // Check social media connection status on component mount
+    useEffect(() => {
+        const fetchFacebookStatus = async () => {
+            setFbStatusLoading(true);
+            try {
+                const data = await getFacebookStatus();
+                setFbConnected(!!data.connected);
+            } catch (e) {
+                setFbConnected(false);
+            } finally {
+                setFbStatusLoading(false);
+            }
+        };
+
+        const fetchTwitterStatus = async () => {
+            setTwStatusLoading(true);
+            try {
+                const data = await getTwitterStatus();
+                setTwConnected(!!data.connected);
+            } catch (e) {
+                setTwConnected(false);
+            } finally {
+                setTwStatusLoading(false);
+            }
+        };
+
+        fetchFacebookStatus();
+        fetchTwitterStatus();
+    }, []);
+
+    // Social media connection handlers
+    const handleConnectFacebook = () => {
+        redirectToFacebookOAuth();
+    };
+
+    const handleConnectTwitter = () => {
+        redirectToTwitterOAuth();
+    };
 
     // Handler for the post button click
     const handlePostClick = useCallback(async () => {
@@ -62,59 +104,60 @@ function ContentPage() {
         console.log("Attempting to post content:", generatedContent);
 
         try {
-            // *** Use your imported API function here ***
-            await saveSocialMediaPost(generatedContent, selectedPlatform, currentConversationId);
-
+            await saveSocialMediaPost(generatedContent, currentConversationId);
             console.log("Content successfully posted!");
             alert("Content successfully posted!");
-            setGeneratedContent(''); // Clear generated content after posting
-            // Optionally, you could refetch conversations or messages here if needed
+            setGeneratedContent('');
         } catch (error) {
             console.error("Error posting content:", error);
             alert("Failed to post content. Please try again.");
         } finally {
             setIsPosting(false);
         }
-    }, [generatedContent, selectedPlatform, currentConversationId]);
+    }, [generatedContent, currentConversationId]);
 
     if (messagesLoading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-64px)]">
+            <div className="flex justify-center items-center h-[calc(100vh-64px)] bg-gray-950 text-gray-300">
                 <p>Loading chat history...</p>
             </div>
         );
     }
 
     return (
-        <div className="flex w-full h-[calc(100vh-64px)]">
-            {/* Left Column: AI Chat Interface and Options */}
-            <div className="w-1/2 border-r border-gray-200 flex flex-col px-4 py-2">
-                <ChatOptions
-                    selectedPlatform={selectedPlatform}
-                    onPlatformChange={(e) => setSelectedPlatform(e.target.value)}
-                    selectedTone={selectedTone}
-                    onToneChange={(e) => setSelectedTone(e.target.value)}
-                    isDisabled={isLoading || isPosting}
-                />
+        <div className="flex w-full h-[calc(100vh-64px)] bg-gradient-to-br from-gray-950 to-gray-800">
+            {/* Left Column: AI Chat Interface and Social Connections */}
+            <div className="w-1/2 border-r border-gray-700 flex flex-col bg-gradient-to-l from-blue-950 to-gray-950">
 
-                <ChatInterface
-                    onContentGenerated={setGeneratedContent}
-                    selectedPlatform={selectedPlatform}
-                    selectedTone={selectedTone}
-                    isLoading={isLoading}
-                    setIsLoading={setIsLoading}
-                    conversationId={currentConversationId}
-                    initialMessages={initialMessages}
-                    setCurrentConversationId={setCurrentConversationId}
-                />
+
+                {/* Chat Interface */}
+                <div className="flex-1 px-4 py-2">
+                    <ChatInterface
+                        onContentGenerated={setGeneratedContent}
+                        isLoading={isLoading}
+                        setIsLoading={setIsLoading}
+                        conversationId={currentConversationId}
+                        initialMessages={initialMessages}
+                        setCurrentConversationId={setCurrentConversationId}
+                    />
+                </div>
             </div>
 
             {/* Right Column: Content Preview */}
-            <div className="w-1/2 flex flex-col bg-gray-100 p-4">
+            <div className="w-1/2 flex flex-col bg-gradient-to-l from-gray-950 to-blue-950 p-4">
                 <PreviewPanel
                     content={generatedContent}
                     onPostClick={handlePostClick}
                     isPosting={isPosting}
+                />
+                {/* Social Connections Section */}
+                <SocialConnections
+                    fbConnected={fbConnected}
+                    fbStatusLoading={fbStatusLoading}
+                    onConnectFacebook={handleConnectFacebook}
+                    twConnected={twConnected}
+                    twStatusLoading={twStatusLoading}
+                    onConnectTwitter={handleConnectTwitter}
                 />
             </div>
         </div>

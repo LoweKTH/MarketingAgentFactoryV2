@@ -58,4 +58,11 @@ public class TaskController {
         ScheduledTaskDTO updatedTask = scheduledTaskService.toggleTaskStatus(taskId, currentUser.getId());
         return ResponseEntity.ok(updatedTask);
     }
+
+
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId, @AuthenticationPrincipal User currentUser) {
+        scheduledTaskService.deleteTask(taskId, currentUser.getId());
+        return ResponseEntity.noContent().build(); // HTTP 204 No Content är standard för lyckad delete
+    }
 }
