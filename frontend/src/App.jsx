@@ -10,6 +10,7 @@ import PrivateRoute from './components/PrivateRoute'; // Import PrivateRoute
 import ProfilePage from './pages/ProfilePage/ProfilePage';
 import TestFacebookPostPage from './pages/ProfilePage/TestFacebookPostPage';
 import TestTwitterPostPage from './pages/ProfilePage/TestTwitterPostPage';
+import ScheduledTaskPage from './pages/ScheduledTaskPage/ScheduledTaskPage.jsx';
 import ConversationSelectionPage from './pages/ConversationSelectionPage/ConversationSelectionPage.jsx'; // Import the new page
 import { AuthProvider } from './contexts/AuthContext'; // Import AuthProvider
 
@@ -66,6 +67,14 @@ function App() {
                             element={
                                 <PrivateRoute>
                                     <TestTwitterPostPage />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/task"
+                            element={
+                                <PrivateRoute>
+                                    <ScheduledTaskPage />
                                 </PrivateRoute>
                             }
                         />
