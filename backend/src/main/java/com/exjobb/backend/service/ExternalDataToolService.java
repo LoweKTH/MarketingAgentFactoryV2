@@ -116,12 +116,32 @@ public class ExternalDataToolService {
 
     @Tool(description = "Call this tool as the FINAL step to publish a completed text post to Facebook...")
     // Add the User parameter to the method signature
-    public String postToFacebook(String content, User user) {
+    public String postToFacebook(String content) {
         try {
-            // The user is now passed in directly.
-            logger.info("--- TOOL CALLED: postToFacebook for user {} ---", user.getUsername());
+            User currentUser = getCurrentAuthenticatedUser();
+            logger.info("--- TOOL CALLED: postToFacebook for user {} ---", currentUser.getUsername());
 
             // Use the passed-in user object
+            saveSocialMediaPost(content, "Facebook", currentUser);
+            facebookService.postToUserFirstPage(currentUser.getUsername(), content);
+
+            return "The post was successfully saved internally and published to Facebook.";
+        } catch (Exception e) {
+            logger.error("Error posting to Facebook: {}", e.getMessage());
+            return "Error posting to Facebook: " + e.getMessage();
+        }
+    }
+
+    /**
+     * This is the internal method for backend use. It is NOT annotated with @Tool.
+     * It requires the User object to be provided explicitly.
+     * This will be used by your automatic/scheduled task runner.
+     */
+    public String postToFacebook(String content, User user) {
+        try {
+            logger.info("--- EXECUTING postToFacebook for user {} ---", user.getUsername());
+
+            // Use the passed-in user object for all operations
             saveSocialMediaPost(content, "Facebook", user);
             facebookService.postToUserFirstPage(user.getUsername(), content);
 
