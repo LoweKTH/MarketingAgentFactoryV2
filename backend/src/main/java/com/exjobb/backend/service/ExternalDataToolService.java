@@ -30,6 +30,7 @@ public class ExternalDataToolService {
     private final ScheduledTaskRepository scheduledTaskRepository;
     private final UserRepository userRepository;
     private final FacebookService facebookService;
+    private final TwitterService twitterService;
     private final SocialMediaPostRepository socialMediaPostRepository;
 
     public ExternalDataToolService(SocialMediaPostRepository postRepository,
@@ -37,12 +38,14 @@ public class ExternalDataToolService {
             ScheduledTaskRepository scheduledTaskRepository,
             UserRepository userRepository,
             FacebookService facebookService,
+            TwitterService twitterService,
             SocialMediaPostRepository socialMediaPostRepository) {
         this.postRepository = postRepository;
         this.newsApiKey = newsApiKey;
         this.scheduledTaskRepository = scheduledTaskRepository;
         this.userRepository = userRepository;
         this.facebookService = facebookService;
+        this.twitterService = twitterService;
         this.socialMediaPostRepository = socialMediaPostRepository;
         logger.info("News API key loaded: {}", newsApiKey);
     }
@@ -151,6 +154,48 @@ public class ExternalDataToolService {
             return "Error posting to Facebook: " + e.getMessage();
         }
     }
+
+    @Tool(description = "Call this tool as the FINAL step to publish a completed text post to Twitter.")
+    public String postToTwitter(String content) {
+        try {
+            User currentUser = getCurrentAuthenticatedUser();
+            logger.info("--- TOOL CALLED: postToTwitter for user {} ---", currentUser.getUsername());
+
+            // Save the post to your internal database
+            saveSocialMediaPost(content, "Twitter", currentUser);
+
+            // Use the TwitterService to post the tweet
+            twitterService.postTweetForUser(currentUser, content);
+
+            return "The post was successfully saved internally and published to Twitter.";
+        } catch (Exception e) {
+            logger.error("Error posting to Twitter: {}", e.getMessage());
+            return "Error posting to Twitter: " + e.getMessage();
+        }
+    }
+
+    /**
+     * This is the internal method for backend use (e.g., scheduled tasks).
+     * It is NOT annotated with @Tool.
+     * It requires the User object to be provided explicitly.
+     */
+    public String postToTwitter(String content, User user) {
+        try {
+            logger.info("--- EXECUTING postToTwitter for user {} ---", user.getUsername());
+
+            // Save the post to your internal database
+            saveSocialMediaPost(content, "Twitter", user);
+
+            // Use the TwitterService to post the tweet
+            twitterService.postTweetForUser(user, content);
+
+            return "The post was successfully saved internally and published to Twitter.";
+        } catch (Exception e) {
+            logger.error("Error posting to Twitter: {}", e.getMessage());
+            return "Error posting to Twitter: " + e.getMessage();
+        }
+    }
+
 
     private User getCurrentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
