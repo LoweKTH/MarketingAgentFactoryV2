@@ -3,7 +3,7 @@
 import React from 'react';
 import ScheduledTaskRow from './ScheduledTaskRow';
 
-const ScheduledTasksTable = ({ tasks, onToggleActive, togglingTaskId }) => {
+const ScheduledTasksTable = ({ tasks, onToggleActive, togglingTaskId, onEdit  }) => {
     return (
         <div className="relative overflow-x-auto shadow-md rounded-lg">
             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -14,7 +14,7 @@ const ScheduledTasksTable = ({ tasks, onToggleActive, togglingTaskId }) => {
                     <th scope="col" className="px-6 py-3">Schedule</th>
                     <th scope="col" className="px-6 py-3">Next Run</th>
                     <th scope="col" className="px-6 py-3">Last Run</th>
-                    <th scope="col" className="px-6 py-3 text-right">Actions</th>
+                    <th scope="col" className="px-6 py-3">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -24,6 +24,7 @@ const ScheduledTasksTable = ({ tasks, onToggleActive, togglingTaskId }) => {
                         task={task}
                         onToggleActive={onToggleActive}
                         isToggling={togglingTaskId === task.id}
+                        onEdit={onEdit}
                     />
                 ))}
                 </tbody>

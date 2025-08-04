@@ -131,7 +131,7 @@ function ContentPage() {
 
 
                 {/* Chat Interface */}
-                <div className="flex-1 px-4 py-2">
+                <div className="flex-1 px-4 py-2 overflow-y-auto">
                     <ChatInterface
                         onContentGenerated={setGeneratedContent}
                         isLoading={isLoading}
