@@ -30,7 +30,7 @@ public class AgentSchedulingService {
     }
 
     // Run every minute to see if any tasks should be started
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 300000)
     @Transactional
     public void executeDueTasks(){
         logger.info("--- SCHEDULER: Checking for due tasks... ---");

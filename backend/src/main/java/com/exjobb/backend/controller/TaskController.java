@@ -1,9 +1,12 @@
 package com.exjobb.backend.controller;
 
 import com.exjobb.backend.dto.ScheduledTaskDTO;
+import com.exjobb.backend.dto.UpdateTaskDTO;
 import com.exjobb.backend.entity.User; // Assuming you have a User entity that implements UserDetails
 import com.exjobb.backend.service.TaskService;
 import com.exjobb.backend.service.UserService;
+
+import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,11 +29,13 @@ public class TaskController {
     }
 
     /**
-     * GET /api/tasks : Get all scheduled tasks for the currently authenticated user.
+     * GET /api/tasks : Get all scheduled tasks for the currently authenticated
+     * user.
      * The user is identified from the Spring Security context.
      *
      * @param user The authenticated user principal.
-     * @return the ResponseEntity with status 200 (OK) and the list of scheduled tasks.
+     * @return the ResponseEntity with status 200 (OK) and the list of scheduled
+     *         tasks.
      */
     @GetMapping
     public ResponseEntity<List<ScheduledTaskDTO>> getMyTasks(Authentication authentication) {
@@ -46,7 +51,7 @@ public class TaskController {
     /**
      * PUT /api/tasks/{taskId}/toggle : Toggles the active status of a task.
      *
-     * @param taskId The ID of the task to toggle.
+     * @param taskId         The ID of the task to toggle.
      * @param authentication The authenticated user principal.
      * @return the ResponseEntity with status 200 (OK) and the updated task DTO.
      */
@@ -59,10 +64,32 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
-
     @DeleteMapping("/{taskId}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId, @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<Void> deleteTask(@PathVariable Long taskId, Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
         scheduledTaskService.deleteTask(taskId, currentUser.getId());
         return ResponseEntity.noContent().build(); // HTTP 204 No Content är standard för lyckad delete
+    }
+
+    /**
+     * PUT /api/tasks/{taskId} : Updates a scheduled task's prompt and cron
+     * expression.
+     *
+     * @param taskId         The ID of the task to update.
+     * @param updateTaskDTO  The DTO containing the new prompt and cron expression.
+     * @param authentication The authenticated user principal.
+     * @return the ResponseEntity with status 200 (OK) and the updated task DTO.
+     */
+    @PutMapping("/{taskId}")
+    public ResponseEntity<ScheduledTaskDTO> updateTask(@PathVariable Long taskId,
+                                                       @Valid @RequestBody UpdateTaskDTO updateTaskDTO, Authentication authentication) {
+        String username = authentication.getName();
+        User currentUser = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+
+        ScheduledTaskDTO updatedTask = scheduledTaskService.updateTask(taskId, updateTaskDTO, currentUser.getId());
+        return ResponseEntity.ok(updatedTask);
     }
 }

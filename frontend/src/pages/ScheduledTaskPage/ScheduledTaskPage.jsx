@@ -1,16 +1,23 @@
 // src/pages/ScheduledTasksPage/ScheduledTasksPage.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchTasks, toggleTaskActiveState } from '../../api/taskApi';
+import { fetchTasks, toggleTaskActiveState, updateTask } from '../../api/taskApi';
 import { RotateCw, FileText, Loader2, AlertCircle } from 'lucide-react';
+
 // ---- ÄNDRING 1: Byt ut importen ----
 import ScheduledTasksTable from './components/ScheduledTasksTable';
+import EditTaskModal from './components/EditTaskmodal';
+
 
 function ScheduledTasksPage() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [togglingTaskId, setTogglingTaskId] = useState(null);
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const loadTasks = useCallback(async () => {
         setLoading(true);
@@ -49,6 +56,38 @@ function ScheduledTasksPage() {
             setTasks(originalTasks); // Revert on error
         } finally {
             setTogglingTaskId(null);
+        }
+    };
+
+    const handleOpenEditModal = (task) => {
+        setEditingTask(task);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingTask(null);
+    };
+
+    const handleUpdateTask = async (updatedData) => {
+        if (!editingTask) return;
+
+        setIsUpdating(true);
+        setError(null);
+        try {
+            const updatedTask = await updateTask(editingTask.id, updatedData);
+            // Update the task in the list state
+            setTasks(currentTasks =>
+                currentTasks.map(task =>
+                    task.id === updatedTask.id ? updatedTask : task
+                )
+            );
+            handleCloseModal(); // Close modal on success
+        } catch (e) {
+            setError(`Failed to update task: ${e.message}`);
+            console.error("Failed to update task:", e);
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -91,6 +130,7 @@ function ScheduledTasksPage() {
                 tasks={tasks}
                 onToggleActive={handleToggleActive}
                 togglingTaskId={togglingTaskId}
+                onEdit={handleOpenEditModal}
             />
         );
     };
@@ -122,6 +162,14 @@ function ScheduledTasksPage() {
 
                 {renderContent()}
             </div>
+
+            <EditTaskModal
+                isOpen={isModalOpen}
+                task={editingTask}
+                onClose={handleCloseModal}
+                onSave={handleUpdateTask}
+                isUpdating={isUpdating}
+            />
         </div>
     );
 }

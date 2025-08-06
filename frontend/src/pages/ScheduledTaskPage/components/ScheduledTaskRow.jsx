@@ -1,7 +1,7 @@
 // src/pages/ScheduledTasksPage/components/ScheduledTaskRow.jsx
 
 import React from 'react';
-import { Calendar, Clock, Play, Pause, RotateCw } from 'lucide-react';
+import { Calendar, Clock, Play, Pause, RotateCw, Edit, Trash2 } from 'lucide-react'; // Import Trash2
 
 // --- Helper Function for Date Formatting (oförändrad) ---
 const formatDateTime = (isoString) => {
@@ -16,7 +16,7 @@ const formatDateTime = (isoString) => {
     }
 };
 
-const ScheduledTaskRow = ({ task, onToggleActive, isToggling }) => {
+const ScheduledTaskRow = ({ task, onToggleActive, isToggling, onEdit, onDelete }) => { // Add onDelete prop
     const { id, prompt, humanReadableCronExpression, nextRunTime, lastRunTime, active } = task;
 
     // Styling för status-indikatorn
@@ -55,14 +55,42 @@ const ScheduledTaskRow = ({ task, onToggleActive, isToggling }) => {
 
             {/* Actions Cell */}
             <td className="px-6 py-4 text-right">
-                <button
-                    onClick={() => onToggleActive(id)}
-                    disabled={isToggling}
-                    className={`flex items-center justify-center space-x-2 w-28 px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 disabled:opacity-70 disabled:cursor-wait ${active ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${active ? 'focus:ring-yellow-500' : 'focus:ring-blue-500'}`}
-                >
-                    {active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                    <span>{active ? 'Pause' : 'Resume'}</span>
-                </button>
+                <div className="flex items-center justify-end gap-2">
+                    {/* Delete Button */}
+                    <button
+                        onClick={() => onDelete(id)} // Call onDelete with task ID
+                        className="p-2 rounded-lg text-sm font-semibold text-red-600 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-700"
+                        aria-label="Delete Task"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+
+                    {/* Edit Button */}
+                    <button
+                        onClick={() => onEdit(task)} // Pass the whole task object
+                        className="p-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                        aria-label="Edit Task"
+                    >
+                        <Edit className="w-4 h-4" />
+                    </button>
+
+                    {/* Toggle Active/Pause Button */}
+                    <button
+                        onClick={() => onToggleActive(id)}
+                        className={`p-2 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-1
+                            ${active
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-700 dark:text-yellow-100 dark:hover:bg-yellow-600'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600'
+                        }
+                            ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                        disabled={isToggling}
+                        aria-label={active ? 'Pause Task' : 'Resume Task'}
+                    >
+                        {active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        <span>{active ? 'Pause' : 'Resume'}</span>
+                    </button>
+                </div>
             </td>
         </tr>
     );

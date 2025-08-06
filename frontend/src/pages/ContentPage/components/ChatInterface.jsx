@@ -25,7 +25,7 @@ const renderMarkdown = (text) => {
  * @param {function} props.setCurrentConversationId - Setter for parent's currentConversationId state.
  */
 function ChatInterface({
-                           onContentGenerated,
+                           onNewAgentResponse,
                            selectedPlatform, // Still received, but not sent to backend for handleChatMessage
                            selectedTone,     // Still received, but not sent to backend for handleChatMessage
                            isLoading,
@@ -121,7 +121,7 @@ function ChatInterface({
             };
 
             setMessages((prevMessages) => [...prevMessages, aiReply]);
-            onContentGenerated(responseData.agentResponse); // Pass the agent's response for preview
+            onNewAgentResponse(responseData);
 
         } catch (error) {
             let errorMessage = 'Sorry, there was an error generating content. Please try again.';

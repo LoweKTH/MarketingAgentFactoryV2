@@ -7,15 +7,20 @@ import com.exjobb.backend.repository.ScheduledTaskRepository;
 import com.exjobb.backend.repository.SocialMediaPostRepository;
 import com.exjobb.backend.repository.UserRepository;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.google.cloud.aiplatform.v1.*;
+import com.google.protobuf.*;
+import com.google.protobuf.util.JsonFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +37,7 @@ public class ExternalDataToolService {
     private final FacebookService facebookService;
     private final TwitterService twitterService;
     private final SocialMediaPostRepository socialMediaPostRepository;
+    private final ImageGenerationService vertexImageGenerator;
 
     public ExternalDataToolService(SocialMediaPostRepository postRepository,
             @Value("${news.api.key}") String newsApiKey,
@@ -39,7 +45,8 @@ public class ExternalDataToolService {
             UserRepository userRepository,
             FacebookService facebookService,
             TwitterService twitterService,
-            SocialMediaPostRepository socialMediaPostRepository) {
+            SocialMediaPostRepository socialMediaPostRepository,
+            @Qualifier("vertexImageGenerator") ImageGenerationService vertexImageGenerator) {
         this.postRepository = postRepository;
         this.newsApiKey = newsApiKey;
         this.scheduledTaskRepository = scheduledTaskRepository;
@@ -47,6 +54,7 @@ public class ExternalDataToolService {
         this.facebookService = facebookService;
         this.twitterService = twitterService;
         this.socialMediaPostRepository = socialMediaPostRepository;
+        this.vertexImageGenerator = vertexImageGenerator;
         logger.info("News API key loaded: {}", newsApiKey);
     }
 
@@ -193,6 +201,28 @@ public class ExternalDataToolService {
         } catch (Exception e) {
             logger.error("Error posting to Twitter: {}", e.getMessage());
             return "Error posting to Twitter: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Generates an image based on a detailed text prompt. " +
+            "The user can optionally specify a provider, for example 'google'. " +
+            "If no provider is specified, 'google' will be used as the default.")
+    public String generateImage(String imagePrompt, String provider){
+        logger.info("--- TOOL CALLED: generateImage with provider: {} ---", provider);
+
+        String providerToUse = (provider != null && !provider.isBlank()) ? provider.toLowerCase() : "google";
+
+        try{
+            switch(providerToUse){
+                case "google":
+                    return vertexImageGenerator.generateImage(imagePrompt);
+                //case "dalle":
+                    //return dalleImageGenerator.generateImage(imagePrompt);
+                default:
+                    return "Error: Unknown image generation provider '" + providerToUse + "'.";
+            }
+        }catch(Exception e){
+            return e.getMessage();
         }
     }
 

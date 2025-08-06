@@ -37,12 +37,12 @@ public class AgentService {
     private final ObjectMapper objectMapper;
 
     public AgentService(@Qualifier("geminiChatClient") ChatClient chatClient,
-            SocialMediaPostRepository postRepository,
-            ChatConversationRepository conversationRepository,
-            ChatMessageRepository messageRepository,
-            InternalDataToolService internalDataToolService,
-            ExternalDataToolService externalDataToolService,
-            ObjectMapper objectMapper) {
+                        SocialMediaPostRepository postRepository,
+                        ChatConversationRepository conversationRepository,
+                        ChatMessageRepository messageRepository,
+                        InternalDataToolService internalDataToolService,
+                        ExternalDataToolService externalDataToolService,
+                        ObjectMapper objectMapper) {
         this.geminiChatClient = chatClient;
         this.postRepository = postRepository;
         this.conversationRepository = conversationRepository;
@@ -56,7 +56,7 @@ public class AgentService {
      * Executes a non-interactive, standalone task for a given user.
      * This method does NOT create or save any chat messages. Its only goal is to
      * use the agent to produce and save a SocialMediaPost
-     * 
+     *
      * @param prompt The instruction for the agent
      * @param user   The user context for the task.
      */
@@ -107,27 +107,17 @@ public class AgentService {
                         executionContext.put("topPostsResult", topPosts);
                         break;
                     case "synthesizeText":
-                        // The original goal from the planner, e.g., "Create a post about..."
                         String originalGoal = step.parameters().get("goal");
+                        String platform = step.parameters().get("platform"); // Retrieve the platform
 
-                        // A much stricter prompt for the synthesis step
-                        String synthesisPrompt = """
-                                Based on the following news: %s
-
-                                And this inspiration: %s
-
-                                Your task is to: %s
-
-                                IMPORTANT: Your entire response MUST BE ONLY the text for the social media post.
-                                Do not include any intro, preamble, or conversational text like "Here is the draft".
-                                """.formatted(
-                                executionContext.get("newsResult"),
-                                executionContext.get("topPostsResult"),
-                                originalGoal);
+                        // Create a new, platform-specific synthesis prompt
+                        String synthesisPrompt = createSynthesisPrompt(
+                                (String) executionContext.get("newsResult"),
+                                (String) executionContext.get("topPostsResult"),
+                                originalGoal,
+                                platform);
 
                         String generatedContent = geminiChatClient.prompt().user(synthesisPrompt).call().content();
-
-                        // Add a call to a new cleanup method for extra safety
                         String cleanedContent = cleanPostContent(generatedContent);
 
                         executionContext.put("generatedContent", cleanedContent);
@@ -148,9 +138,9 @@ public class AgentService {
                         finalResult = externalDataToolService.postToFacebook(contentToPost, user);
                         break;
 
-                     case "postToTwitter":
+                    case "postToTwitter":
                         String contentToPostTw = (String) executionContext.get("generatedContent");
-                         if (contentToPostTw == null || contentToPostTw.isBlank()) {
+                        if (contentToPostTw == null || contentToPostTw.isBlank()) {
                             finalResult = "Skipped Twitter posting because generated content was empty.";
                             logger.warn("--- ORCHESTRATOR: " + finalResult);
                             break;
@@ -174,7 +164,7 @@ public class AgentService {
     /**
      * Main method which handles all conversational logic with one single, powerful
      * prompt.
-     * 
+     *
      * @param request
      * @param currentUser
      * @return
@@ -198,14 +188,27 @@ public class AgentService {
                 .content();
         logger.info("--- RESPONSE RECEIVED FROM LLM ---");
 
-        saveMessage(agentResponse, Role.AGENT, conversation);
-        return new ChatMessageResponse(agentResponse, conversation.getId());
+        final String imagePrefix = "IMAGE_RESULT:::";
+        String textResponseForUser = agentResponse;
+        String imageDataForFrontend = null;
+
+        if (agentResponse != null && agentResponse.startsWith(imagePrefix)) {
+            // Detta är ett bildsvar!
+            imageDataForFrontend = agentResponse.substring(imagePrefix.length()).trim();
+
+            // Meddelandet som sparas i chatten och visas för användaren ska vara en enkel bekräftelse.
+            // Detta hindrar den stora base64-datan från att förorena chat-historiken.
+            textResponseForUser = "Here is the image I generated for you.";
+        }
+
+        saveMessage(textResponseForUser, Role.AGENT, conversation);
+        return new ChatMessageResponse(textResponseForUser, conversation.getId(), imageDataForFrontend);
     }
 
     /**
      * Retrieves all chat conversations for a given user ID, ordered by creation
      * timestamp.
-     * 
+     *
      * @param userId The ID of the user for whom to retrieve conversations.
      * @return A list of ChatConversationResponse DTOs.
      */
@@ -222,7 +225,7 @@ public class AgentService {
     /**
      * Retrieves all chat messages for a given conversation ID, ordered by creation
      * timestamp.
-     * 
+     *
      * @param conversationId The ID of the conversation.
      * @return A list of ChatMessage entities.
      */
@@ -237,76 +240,87 @@ public class AgentService {
 
     /**
      * Creates the plan to be executed
-     * 
+     *
      * @param userRequest
      * @return
      */
     private String createPlannerPrompt(String userRequest) {
         return """
                 You are an intelligent planning agent. Your task is to take a user's request and create a step-by-step plan
-                 to fulfill it using a set of available tools.
-                    Return the plan as a JSON array of objects. Each object must have a 'tool' name and a 'parameters' object.
+                to fulfill it using a set of available tools.
+                Return the plan as a JSON array of objects. Each object must have a 'tool' name and a 'parameters' object.
 
-                    The available tools are:
-                    - 'getMarketNews(topic, countryCode)'
-                    - 'getTopPerformingPosts()'
-                    - 'postToFacebook(content)'
-                    - 'postToTwitter(content)'
+                The available tools are:
+                - 'getMarketNews(topic, countryCode)'
+                - 'getTopPerformingPosts()'
+                - 'synthesizeText(goal, platform)' // NEW: 'platform' parameter added here
+                - 'postToFacebook(content)'
+                - 'postToTwitter(content)'
 
-                    If you need to generate text based on gathered information, use the special tool name 'synthesizeText'
-                     and describe the goal in a 'goal' parameter.
-                    The 'postToFacebook' and 'postToTwitter' tools requires content that must be generated by the 'synthesizeText' step first.
+                If you need to generate text based on gathered information, use the special tool name 'synthesizeText'
+                and describe the goal in a 'goal' parameter. The 'synthesizeText' tool now also requires a 'platform' parameter
+                which should be either 'Facebook' or 'Twitter'. This is crucial for tailoring the content.
 
-                    User Request: "%s"
+                The 'postToFacebook' and 'postToTwitter' tools require content that must be generated by the 'synthesizeText' step first.
 
-                    JSON Plan:
-                    """
+                User Request: "%s"
+
+                JSON Plan:
+                """
                 .formatted(userRequest);
     }
 
     /**
      * The interactive prompt that is sent to the LLM
-     * 
+     *
      * @param conversationHistory
      * @return
      */
     private String createMasterPrompt(String conversationHistory) {
         return """
-                You are an expert, helpful, and collaborative social media marketing agent. Your goal is to assist the user by creating content, providing ideas, and performing actions based on their instructions.
+            You are an expert, helpful, and collaborative social media marketing agent. Your goal is to assist the user by creating content, 
+            providing ideas, and performing actions based on their instructions.
 
-                **--- YOUR CORE BEHAVIOR ---**
+            **--- YOUR WORKFLOW AND RULES ---**
 
-                1.  **GATHER INFORMATION:** When the user asks for a post or ideas, use your information-gathering tools
-                 (like `getMarketNews`, `getTopPerformingPosts`) silently to get the necessary context and inspiration.
-                    - **TOPIC RULE:** If `getMarketNews` needs a `topic` and the user is general, you MUST use the default topic
-                     `'business OR technology'`. DO NOT ask for a topic.
+            1.  **UNDERSTAND AND GATHER INFORMATION:**
+                - First, analyze the user's request in the context of the entire conversation.
+                - If you need information to fulfill the request (like news or post inspiration), use your information-gathering tools 
+                (`getMarketNews`, `getTopPerformingPosts`) silently as a first step.
+                - **TOPIC RULE:** If `getMarketNews` needs a `topic` and the user is general (e.g., "latest news"),
+                 you MUST use the default topic `'business OR technology'`. DO NOT ask the user for a topic.
 
-                2.  **HANDLE ACTION REQUESTS (VERY IMPORTANT):**
-                    - Some of your tools perform irreversible actions that affect the outside world, like `postToFacebook`, `postToTwitter`, or `createTask`.
-                    - **Before using an action tool, you MUST first present your generated content or your plan to the user and
-                     ask for their explicit confirmation.**
-                    - Example for posting: "Here is the draft I created based on the latest news: [the post content]. Shall I publish this to Facebook?"
-                    - Example for posting to Twitter: "Here is the draft for Twitter: [the post content]. Ready to post it?"
-                    - Example for scheduling: "I am ready to schedule a task to 'create a post about...'
-                     every 12 hours. Is this correct?"
-                    - Only after the user confirms with "yes", "okay", "go ahead" or similar, should you
-                     call the action tool in your next turn.
+            2.  **APPLY PLATFORM RULES:**
+                - When creating content for **Twitter**, the final text MUST NOT exceed 280 characters.
+                - When creating content for **Facebook**, posts can be longer and more conversational.
 
-                3.  **HANDLE INFORMATION REQUESTS:**
-                    - If the user only asks for information (e.g., "what are the latest headlines?"),
-                    provide the information directly and cleanly.
+            3.  **DETERMINE FINAL ACTION:** Based on the user's request, decide your final action:
 
-                ---
-                CONVERSATION HISTORY:
-                %s
-                ---
-                """
-                .formatted(conversationHistory);
+                - **IF the request is for IMAGE GENERATION:** This is a creative action. Execute it immediately without confirmation. 
+                Your process is to first create a detailed, descriptive prompt IN ENGLISH, and then call the `generateImage` tool with that prompt. 
+                Your turn ends after you call the tool.
+
+                - **IF the request is for an IRREVERSIBLE ACTION (e.g., `postToFacebook`, `createTask`)
+                :** You MUST first present your draft or plan to the user and ask for their explicit confirmation 
+                (e.g., "Here is the draft... Shall I publish it?"). Only call the actual tool in your NEXT turn, after the user has agreed.
+
+                - **IF the request is ONLY for information or ideas:** Provide the information directly and cleanly as your final answer.
+
+            **--- OUTPUT FORMATTING ---**
+            - When a tool returns a result prefixed with "IMAGE_RESULT:::", your final response to the user MUST be that 
+            exact result string and nothing else.
+
+            ---
+            CONVERSATION HISTORY:
+            %s
+            ---
+            """.formatted(conversationHistory);
     }
+
     /**
      * Help method for database interaction - saves a creates a new- or finds a
      * current conversation
-     * 
+     *
      * @param request
      * @param currentUser
      * @return
@@ -330,7 +344,7 @@ public class AgentService {
     /**
      * A private helper method for database interaction - Saves a message to the
      * database
-     * 
+     *
      * @param message
      * @param role
      * @param conversation
@@ -369,7 +383,7 @@ public class AgentService {
 
     /**
      * Removes common AI conversational preambles from generated text.
-     * 
+     *
      * @param content The raw content from the AI
      * @return The cleaned content, ready for posting.
      */
@@ -383,6 +397,35 @@ public class AgentService {
         // etc.
         String cleaned = content.replaceAll("(?i)^.*?:\\s*", "").trim();
         return cleaned;
+    }
+
+    private String createSynthesisPrompt(String news, String topPosts, String goal, String platform) {
+        String platformConstraint = "";
+        if ("Twitter".equalsIgnoreCase(platform)) {
+            // Twitter's limit is 280 characters. Let's give the model a buffer.
+            platformConstraint = "The post must be concise and under 250 characters. Use hashtags relevant to the topic.";
+        } else if ("Facebook".equalsIgnoreCase(platform)) {
+            // Facebook's limit is very high, but best practice is to keep it shorter for engagement.
+            platformConstraint = "The post can be longer and more descriptive than a tweet. Aim for a friendly, conversational tone.";
+        }
+
+        // You can add more platforms here as needed.
+
+        return """
+        Based on the following news: %s
+
+        And this inspiration: %s
+
+        Your task is to: %s
+
+        **PLATFORM GUIDELINES:**
+        - This post is for the platform: %s
+        - %s
+
+        IMPORTANT: Your entire response MUST BE ONLY the text for the social media post.
+        Do not include any intro, preamble, or conversational text like "Here is the draft".
+        DO NOT use any special formatting characters like asterisks or bolding.
+        """.formatted(news, topPosts, goal, platform, platformConstraint);
     }
 
 }

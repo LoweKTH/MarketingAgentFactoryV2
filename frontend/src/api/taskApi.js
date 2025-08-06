@@ -32,7 +32,34 @@ export const toggleTaskActiveState = async (taskId) => {
     }
 };
 
+/**
+ * Updates a task's prompt and cron expression.
+ * @param {number} taskId The ID of the task to update.
+ * @param {{ prompt: string, cronExpression: string }} taskData The data to update.
+ * @returns {Promise<object>} A promise that resolves to the updated task object.
+ */
+export const updateTask = async (taskId, taskData) => {
+    try {
+        const response = await axiosInstance.put(`/tasks/${taskId}`, taskData);
+        return response.data;
+    } catch (error) {
+        console.error("Error in updateTask:", error);
+        throw error.response?.data?.message || error.message || "Failed to update task";
+    }
+};
 
+
+/**
+ * Deletes a scheduled task.
+ * @param {number} taskId The ID of the task to delete.
+ * @returns {Promise<void>} A promise that resolves when the task is successfully deleted.
+ * @throws {Error} If the API call fails.
+ */
 export const deleteTask = async (taskId) => {
-
-}
+    try {
+        await axiosInstance.delete(`/tasks/${taskId}`);
+    } catch (error) {
+        console.error("Error in deleteTask:", error);
+        throw error.response?.data?.message || error.message || "Failed to delete task";
+    }
+};

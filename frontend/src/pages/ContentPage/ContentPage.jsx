@@ -20,6 +20,7 @@ function ContentPage() {
     const [currentConversationId, setCurrentConversationId] = useState(null);
     const [initialMessages, setInitialMessages] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(true);
+    const [latestImageUrl, setLatestImageUrl] = useState(false);
 
     // Social media connection states
     const [fbConnected, setFbConnected] = useState(false);
@@ -84,7 +85,18 @@ function ContentPage() {
         fetchTwitterStatus();
     }, []);
 
-    // Social media connection handlers
+    const handleNewAgentResponse = (response) => {
+        // Om svaret innehåller en bild-URL, uppdatera bild-statet.
+        if (response.imageDataUrl) {
+            setLatestImageUrl(response.imageDataUrl);
+            setGeneratedContent(''); // Rensa eventuellt gammalt textinnehåll
+        }
+        // Om det är ett text-svar som ska kunna postas (t.ex. från "propose-and-confirm")
+        // kan ni lägga till logik här för att sätta `generatedContent`.
+        // Just nu fokuserar vi på bilder.
+    };
+
+        // Social media connection handlers
     const handleConnectFacebook = () => {
         redirectToFacebookOAuth();
     };
@@ -131,9 +143,9 @@ function ContentPage() {
 
 
                 {/* Chat Interface */}
-                <div className="flex-1 px-4 py-2">
+                <div className="flex-1 px-4 py-2 overflow-y-auto">
                     <ChatInterface
-                        onContentGenerated={setGeneratedContent}
+                        onNewAgentResponse={handleNewAgentResponse}
                         isLoading={isLoading}
                         setIsLoading={setIsLoading}
                         conversationId={currentConversationId}
@@ -147,6 +159,7 @@ function ContentPage() {
             <div className="w-1/2 flex flex-col bg-gradient-to-l from-gray-950 to-blue-950 p-4">
                 <PreviewPanel
                     content={generatedContent}
+                    imageUrl={latestImageUrl}
                     onPostClick={handlePostClick}
                     isPosting={isPosting}
                 />

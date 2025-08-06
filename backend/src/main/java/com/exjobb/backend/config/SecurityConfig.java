@@ -29,10 +29,8 @@ public class SecurityConfig {
     @Order(1)
     public SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
         http
-                // Denna kedja agerar BARA på dessa specifika sökvägar
-                .securityMatcher("/api/auth/register", "/api/auth/login", "/api/auth/logout") // <--- Adjust this line
+                .securityMatcher("/api/auth/register", "/api/auth/login", "/api/auth/logout", "api/images/**")
                 .authorizeHttpRequests(authorize -> authorize
-                        // Tillåt alla anrop som matchar ovanstående
                         .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -44,7 +42,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // privateEndpointsFilterChain remains the same
+
     @Bean
     @Order(2)
     public SecurityFilterChain privateEndpointsFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
@@ -52,7 +50,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/user/**").hasRole("USER")
-                        // Now, /api/auth/twitter/status will be caught here and require authentication
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -64,8 +61,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-    // --- Era befintliga hjälp-bönor (oförändrade) ---
 
     @Bean
     public PasswordEncoder passwordEncoder() {
