@@ -1,34 +1,24 @@
 package com.exjobb.backend.controller;
 
 import com.exjobb.backend.entity.User;
-import com.exjobb.backend.service.UserService;
+import com.exjobb.backend.service.social.TwitterService;
+import com.exjobb.backend.service.user.UserService;
+import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.servlet.view.RedirectView;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.client.RestTemplate;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.exjobb.backend.service.TwitterService;
-import java.util.Map;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
-import jakarta.servlet.http.HttpSession;
-
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.util.Base64;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/api/auth/twitter")
@@ -153,7 +143,7 @@ public class TwitterController {
                         .body(Map.of("error", "User not found"));
             }
 
-            // Check if user has a valid Twitter connection
+
             if (!twitterOAuthService.isTwitterConnected(user)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Twitter account not connected or token invalid"));

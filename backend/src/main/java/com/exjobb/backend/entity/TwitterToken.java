@@ -28,7 +28,7 @@ public class TwitterToken {
         this.createdAt = Instant.now();
     }
 
-    // Getters and setters
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }

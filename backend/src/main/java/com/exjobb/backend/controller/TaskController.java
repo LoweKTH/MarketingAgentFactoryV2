@@ -2,16 +2,13 @@ package com.exjobb.backend.controller;
 
 import com.exjobb.backend.dto.ScheduledTaskDTO;
 import com.exjobb.backend.dto.UpdateTaskDTO;
-import com.exjobb.backend.entity.User; // Assuming you have a User entity that implements UserDetails
-import com.exjobb.backend.service.TaskService;
-import com.exjobb.backend.service.UserService;
-
+import com.exjobb.backend.entity.User;
+import com.exjobb.backend.service.user.TaskService;
+import com.exjobb.backend.service.user.UserService;
 import jakarta.validation.Valid;
-
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -70,7 +67,7 @@ public class TaskController {
         User currentUser = userService.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
         scheduledTaskService.deleteTask(taskId, currentUser.getId());
-        return ResponseEntity.noContent().build(); // HTTP 204 No Content är standard för lyckad delete
+        return ResponseEntity.noContent().build();
     }
 
     /**

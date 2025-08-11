@@ -1,12 +1,11 @@
-// src/main/java/com/exjobb/backend/service/ScheduledTaskService.java
-package com.exjobb.backend.service;
+
+package com.exjobb.backend.service.user;
 
 import com.exjobb.backend.dto.ScheduledTaskDTO;
 import com.exjobb.backend.dto.UpdateTaskDTO;
 import com.exjobb.backend.entity.ScheduledTask;
-import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.ScheduledTaskRepository;
-import com.exjobb.backend.utils.CronExpressionTranslator; // <-- NEW IMPORT
+import com.exjobb.backend.utils.CronExpressionTranslator;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 
@@ -27,12 +26,12 @@ public class TaskService {
 
     private final Logger logger = LoggerFactory.getLogger(TaskService.class);
     private final ScheduledTaskRepository scheduledTaskRepository;
-    private final CronExpressionTranslator cronExpressionTranslator; // <-- NEW FIELD
+    private final CronExpressionTranslator cronExpressionTranslator;
 
     public TaskService(ScheduledTaskRepository scheduledTaskRepository,
-                       CronExpressionTranslator cronExpressionTranslator) { // <-- INJECT
+                       CronExpressionTranslator cronExpressionTranslator) {
         this.scheduledTaskRepository = scheduledTaskRepository;
-        this.cronExpressionTranslator = cronExpressionTranslator; // <-- ASSIGN
+        this.cronExpressionTranslator = cronExpressionTranslator;
     }
 
     @Transactional(readOnly = true)
@@ -40,34 +39,28 @@ public class TaskService {
         List<ScheduledTask> tasks = scheduledTaskRepository.findByUserId(userId);
         return tasks.stream()
                 .map(task -> {
-                    String humanReadableCron = cronExpressionTranslator.translate(task.getCronExpression()); // <--
-                    // TRANSLATE
-                    // HERE
-                    return ScheduledTaskDTO.fromEntity(task, humanReadableCron); // <-- PASS TRANSLATED STRING
+                    String humanReadableCron = cronExpressionTranslator.translate(task.getCronExpression());
+                    return ScheduledTaskDTO.fromEntity(task, humanReadableCron);
                 })
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public ScheduledTaskDTO toggleTaskStatus(Long taskId, Long userId) {
-        // 1. Hämta entiteten från databasen
         ScheduledTask task = scheduledTaskRepository.findById(taskId)
                 .orElseThrow(
                         () -> new jakarta.persistence.EntityNotFoundException("Task not found with id: " + taskId));
 
-        // 2. Behörighetskontroll: Säkerställ att den inloggade användaren äger
-        // uppgiften
         if (!task.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("User does not have permission to modify this task");
         }
 
         boolean wasActive = task.isActive();
 
-        // 3. Växla den aktiva statusen
         task.setActive(!wasActive);
 
-        // 4. Om uppgiften precis blev aktiverad, beräkna en ny körtid
-        if (!wasActive) { // Villkoret är sant om den VAR inaktiv och nu blir aktiv
+
+        if (!wasActive) {
             logger.info("Task {} has been reactivated. Recalculating next run time.", taskId);
 
             CronExpression cron = CronExpression.parse(task.getCronExpression());
@@ -79,12 +72,8 @@ public class TaskService {
             logger.info("Task {} has been paused.", taskId);
         }
 
-        // 5. Spara den uppdaterade entiteten
         ScheduledTask updatedTask = scheduledTaskRepository.save(task);
 
-        // 6. Översätt den sparade entiteten till en DTO och returnera den
-        // Notera: Detta antar att ni har en 'cronExpressionTranslator'-komponent
-        // tillgänglig
         String humanReadableCron = cronExpressionTranslator.translate(updatedTask.getCronExpression());
         return ScheduledTaskDTO.fromEntity(updatedTask, humanReadableCron);
     }
@@ -111,11 +100,8 @@ public class TaskService {
             throw new AccessDeniedException("User does not have permission to modify this task");
         }
 
-        // --- NEW: CRON GENERATION LOGIC ---
         String cronToSave = updateTaskDTO.getCronExpression();
 
-        // If a cron expression was NOT provided, try to build one from the simple
-        // inputs.
         if (cronToSave == null || cronToSave.isBlank()) {
             Integer interval = updateTaskDTO.getInterval();
             String unit = updateTaskDTO.getUnit();
@@ -127,16 +113,12 @@ public class TaskService {
 
             switch (unit.toLowerCase()) {
                 case "minutes":
-                    // Runs at the start of the second, every X minutes. e.g., "0 */5 * * * *"
                     cronToSave = String.format("0 */%d * * * *", interval);
                     break;
                 case "hours":
-                    // Runs at the start of the minute and second, every X hours. e.g., "0 0 */4 * *
-                    // *"
                     cronToSave = String.format("0 0 */%d * * *", interval);
                     break;
                 case "days":
-                    // Runs at 9:00 AM every X days. e.g., "0 0 9 */2 * *"
                     cronToSave = String.format("0 0 9 */%d * *", interval);
                     break;
                 default:
@@ -144,7 +126,6 @@ public class TaskService {
             }
         }
 
-        // Update task properties
         task.setPrompt(updateTaskDTO.getPrompt());
         task.setCronExpression(cronToSave);
 

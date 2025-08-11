@@ -8,16 +8,16 @@ public class UpdateTaskDTO {
     @NotBlank(message = "Prompt cannot be blank")
     private String prompt;
 
-    // This field remains for advanced users or when the simple inputs aren't used.
+
     private String cronExpression;
 
-    // --- NEW FIELDS for simple scheduling ---
+
     @Min(1)
-    private Integer interval; // e.g., 5
-    private String unit;      // e.g., "hours", "days", "minutes"
+    private Integer interval;
+    private String unit;
 
 
-    // Getters and Setters
+
     public String getPrompt() { return prompt; }
     public void setPrompt(String prompt) { this.prompt = prompt; }
     public String getCronExpression() { return cronExpression; }

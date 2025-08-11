@@ -14,34 +14,32 @@ public class ScheduledTaskDTO {
     private Long id;
     private String prompt;
     private String cronExpression;
-    private String humanReadableCronExpression; // <-- NEW FIELD
+    private String humanReadableCronExpression;
     private LocalDateTime nextRunTime;
     private LocalDateTime lastRunTime;
-    private boolean active; // Changed from isActive to active for consistency with JSON
+    private boolean active;
 
-    // Constructor with new field
+
     public ScheduledTaskDTO(Long id, String prompt, String cronExpression, String humanReadableCronExpression, LocalDateTime nextRunTime, LocalDateTime lastRunTime, boolean active) {
         this.id = id;
         this.prompt = prompt;
         this.cronExpression = cronExpression;
-        this.humanReadableCronExpression = humanReadableCronExpression; // Assign new field
+        this.humanReadableCronExpression = humanReadableCronExpression;
         this.nextRunTime = nextRunTime;
         this.lastRunTime = lastRunTime;
         this.active = active;
     }
 
-    public static ScheduledTaskDTO fromEntity(ScheduledTask task, String humanReadableCron) { // Modified to accept translated cron
+    public static ScheduledTaskDTO fromEntity(ScheduledTask task, String humanReadableCron) {
         return new ScheduledTaskDTO(
                 task.getId(),
                 task.getPrompt(),
                 task.getCronExpression(),
-                humanReadableCron, // Pass the translated string
+                humanReadableCron,
                 task.getNextRunTime(),
                 task.getLastRunTime(),
                 task.isActive()
         );
     }
-    // You might want to update your `isActive()` getter to `isActive()` for Lombok's @Data
-    // and your DTO to `private boolean active;` for consistent naming with JSON.
-    // I've updated it to `active` based on your previous JSON.
+
 }

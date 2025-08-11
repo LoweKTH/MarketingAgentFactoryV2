@@ -2,7 +2,7 @@ package com.exjobb.backend.controller;
 
 import com.exjobb.backend.dto.LoginRequest;
 import com.exjobb.backend.dto.LoginResponse;
-import com.exjobb.backend.service.UserService;
+import com.exjobb.backend.service.user.UserService;
 import com.exjobb.backend.utils.JwtUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -46,7 +46,6 @@ public class LoginController {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Load user details and generate JWT token
             UserDetails userDetails = userService.loadUserByUsername(loginRequest.getUsername());
             String jwt = jwtUtil.generateToken(userDetails);
 

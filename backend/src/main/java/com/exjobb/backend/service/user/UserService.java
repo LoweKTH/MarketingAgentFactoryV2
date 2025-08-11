@@ -1,8 +1,7 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.user;
 
 import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -27,15 +26,14 @@ public class UserService implements UserDetailsService{
         this.passwordEncoder = passwordEncoder;
     }
 
-    @PostConstruct // This method runs after the UserService bean is initialized
+    @PostConstruct
     public void createDefaultUser() {
-        // Check if 'admin' user already exists to prevent duplicate creation
         if (userRepository.findByUsername("admin").isEmpty()) {
             User adminUser = new User("admin", passwordEncoder.encode("password"), "ROLE_ADMIN,ROLE_USER");
             userRepository.save(adminUser);
             System.out.println("Default admin user created!");
         }
-        // Check if 'user' user already exists
+
         if (userRepository.findByUsername("user").isEmpty()) {
             User normalUser = new User("user", passwordEncoder.encode("password"), "ROLE_USER");
             userRepository.save(normalUser);
@@ -52,7 +50,6 @@ public class UserService implements UserDetailsService{
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        // Convert roles string to list of authorities
         List<SimpleGrantedAuthority> authorities = Arrays.stream(user.getRoles().split(","))
                 .map(role -> new SimpleGrantedAuthority(role.trim()))
                 .collect(Collectors.toList());
@@ -64,7 +61,6 @@ public class UserService implements UserDetailsService{
                 .build();
     }
 
-    // Method to authenticate user (optional - Spring Security handles this automatically)
     public boolean authenticateUser(String username, String password) {
         Optional<User> userOpt = findByUsername(username);
         if (userOpt.isPresent()) {

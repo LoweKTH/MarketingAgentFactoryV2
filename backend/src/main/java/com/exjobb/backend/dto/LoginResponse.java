@@ -9,7 +9,6 @@ public class LoginResponse {
         this.message = message;
     }
 
-    // Getters
     public String getJwt() {
         return jwt;
     }
@@ -18,5 +17,5 @@ public class LoginResponse {
         return message;
     }
 
-    // No setters needed if immutable
+
 }

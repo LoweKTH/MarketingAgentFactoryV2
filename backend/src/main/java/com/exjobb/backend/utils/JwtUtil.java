@@ -18,13 +18,11 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    // IMPORTANT: Use a strong, unique secret key. Store it securely (e.g., in environment variables).
-    // For development, you can put it in application.properties or application.yml
     @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.expiration}")
-    private long expirationTime; // e.g., 86400000 ms = 24 hours
+    private long expirationTime;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -49,8 +47,6 @@ public class JwtUtil {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        // Add roles/authorities to claims if needed:
-        // claims.put("roles", userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
         return createToken(claims, userDetails.getUsername());
     }
 
@@ -59,7 +55,7 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setSubject(userName)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expirationTime)) // Token expires in 'expirationTime' milliseconds
+                .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256).compact();
     }
 

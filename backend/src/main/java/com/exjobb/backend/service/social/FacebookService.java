@@ -1,10 +1,11 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.social;
 
 import com.exjobb.backend.entity.FacebookPageToken;
 import com.exjobb.backend.entity.FacebookToken;
 import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.FacebookPageTokenRepository;
 import com.exjobb.backend.repository.FacebookTokenRepository;
+import com.exjobb.backend.service.user.UserService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +16,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -81,10 +81,6 @@ public class FacebookService {
         FacebookToken token = existingToken.orElse(new FacebookToken());
         token.setUser(user);
         token.setAccessToken(accessToken);
-        // The user access token from the initial auth does not have an expiry if it's a
-        // short-lived one.
-        // It's better to manage long-lived tokens for server-side usage.
-        // For simplicity, we are saving it as is.
         facebookTokenRepository.save(token);
     }
 
@@ -104,7 +100,6 @@ public class FacebookService {
     }
 
     private void savePageToken(User user, String pageId, String pageName, String accessToken) {
-        // Use the new method to find a token by both User and PageId
         Optional<FacebookPageToken> existing = facebookPageTokenRepository.findByUserAndPageId(user, pageId);
 
         FacebookPageToken token = existing.orElse(new FacebookPageToken());
@@ -139,6 +134,36 @@ public class FacebookService {
         }
 
         return postToPage(pages.get(0).getPageId(), message);
+    }
+
+
+    /**
+     * Publishes a photo to a specific Facebook page using its public URL.
+     *
+     * @param pageId  The ID of the Facebook page.
+     * @param caption The text that will accompany the photo.
+     * @param imageUrl The publicly accessible URL of the image to post.
+     * @return The response from the Facebook Graph API.
+     * @throws Exception if the page token is not found or the API call fails.
+     */
+    public String postPhotoToPage(String pageId, String caption, String imageUrl) throws Exception {
+        FacebookPageToken pageToken = facebookPageTokenRepository.findByPageId(pageId)
+                .orElseThrow(() -> new Exception("Page token not found for pageId: " + pageId));
+
+        String url = "https://graph.facebook.com/v23.0/" + pageId + "/photos";
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("caption", caption);
+        params.add("url", imageUrl);
+        params.add("access_token", pageToken.getAccessToken());
+
+        ResponseEntity<String> response = restTemplate.postForEntity(url, params, String.class);
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return "Image successfully posted to Facebook page " + pageId;
+        } else {
+            throw new RuntimeException("Failed to post image to Facebook. Response: " + response.getBody());
+        }
     }
 
     private String postToPage(String pageId, String message) throws Exception {

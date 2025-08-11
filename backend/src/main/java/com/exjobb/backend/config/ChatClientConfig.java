@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Primary;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Configuration
 public class ChatClientConfig {
@@ -43,5 +42,4 @@ public class ChatClientConfig {
     }
 
 
-    // Can add additional models here
 }

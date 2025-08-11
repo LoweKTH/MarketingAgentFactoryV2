@@ -1,4 +1,4 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.agent;
 
 import com.exjobb.backend.dto.ChatConversationResponse;
 import com.exjobb.backend.dto.ChatMessageRequest;
@@ -8,6 +8,8 @@ import com.exjobb.backend.entity.*;
 import com.exjobb.backend.repository.ChatConversationRepository;
 import com.exjobb.backend.repository.ChatMessageRepository;
 import com.exjobb.backend.repository.SocialMediaPostRepository;
+import com.exjobb.backend.service.mcptools.ExternalDataToolService;
+import com.exjobb.backend.service.mcptools.InternalDataToolService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,8 +22,6 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -62,38 +62,34 @@ public class AgentService {
      */
     public void executeStandaloneTask(String prompt, User user) {
 
-        // Call planner to get json plan
         String plannerPrompt = createPlannerPrompt(prompt);
-        logger.info("--- ORCHESTRATOR: Requesting plan from Planner AI for user '{}' ---", user.getUsername());
+        logger.info("ORCHESTRATOR: Requesting plan from Planner AI for user '{}'", user.getUsername());
         String jsonPlanString = geminiChatClient.prompt().user(plannerPrompt).call().content();
-        logger.info("--- ORCHESTRATOR: Received plan: {} ---", jsonPlanString);
+        logger.info("ORCHESTRATOR: Received plan: {}", jsonPlanString);
 
-        // Clean up Json
         String cleanedJson = jsonPlanString;
         if (cleanedJson.startsWith("```json")) {
-            cleanedJson = cleanedJson.substring(7); // Tar bort ```json och en eventuell ny rad
+            cleanedJson = cleanedJson.substring(7);
         }
         if (cleanedJson.endsWith("```")) {
             cleanedJson = cleanedJson.substring(0, cleanedJson.lastIndexOf("```"));
         }
         cleanedJson = cleanedJson.trim();
 
-        // Parse json plan
         List<PlanStep> plan;
         try {
             plan = objectMapper.readValue(cleanedJson, new TypeReference<List<PlanStep>>() {
             });
         } catch (JsonProcessingException e) {
-            logger.error("--- ORCHESTRATOR: Failed to parse JSON plan from LLM. Aborting task.", e);
+            logger.error("ORCHESTRATOR: Failed to parse JSON plan from LLM. Aborting task.", e);
             return;
         }
 
-        // Execute plan step by step
         Map<String, Object> executionContext = new HashMap<>();
         String finalResult = "Task finished with no specific results.";
 
         for (PlanStep step : plan) {
-            logger.info("--- ORCHESTRATOR: Executing step -> {}", step.tool());
+            logger.info("ORCHESTRATOR: Executing step -> {}", step.tool());
             try {
                 switch (step.tool()) {
                     case "getMarketNews":
@@ -108,9 +104,8 @@ public class AgentService {
                         break;
                     case "synthesizeText":
                         String originalGoal = step.parameters().get("goal");
-                        String platform = step.parameters().get("platform"); // Retrieve the platform
+                        String platform = step.parameters().get("platform");
 
-                        // Create a new, platform-specific synthesis prompt
                         String synthesisPrompt = createSynthesisPrompt(
                                 (String) executionContext.get("newsResult"),
                                 (String) executionContext.get("topPostsResult"),
@@ -122,16 +117,14 @@ public class AgentService {
 
                         executionContext.put("generatedContent", cleanedContent);
                         break;
-                    // In your executeStandaloneTask method...
+
 
                     case "postToFacebook":
-                        // This now gets the cleaned content
                         String contentToPost = (String) executionContext.get("generatedContent");
 
-                        // Check if content is null or empty before posting
                         if (contentToPost == null || contentToPost.isBlank()) {
                             finalResult = "Skipped posting because generated content was empty.";
-                            logger.warn("--- ORCHESTRATOR: " + finalResult);
+                            logger.warn("ORCHESTRATOR: " + finalResult);
                             break;
                         }
 
@@ -142,7 +135,7 @@ public class AgentService {
                         String contentToPostTw = (String) executionContext.get("generatedContent");
                         if (contentToPostTw == null || contentToPostTw.isBlank()) {
                             finalResult = "Skipped Twitter posting because generated content was empty.";
-                            logger.warn("--- ORCHESTRATOR: " + finalResult);
+                            logger.warn("ORCHESTRATOR: " + finalResult);
                             break;
                         }
                         // Use the overloaded method that accepts a User object
@@ -150,15 +143,15 @@ public class AgentService {
                         break;
 
                     default:
-                        logger.warn("--- ORCHESTRATOR: Unknown tool in plan: {} ---", step.tool());
+                        logger.warn("ORCHESTRATOR: Unknown tool in plan: {}", step.tool());
                 }
             } catch (Exception e) {
-                logger.error("--- ORCHESTRATOR: Failed to execute step {}. Aborting task. Error: {}", step.tool(),
+                logger.error("ORCHESTRATOR: Failed to execute step {}. Aborting task. Error: {}", step.tool(),
                         e.getMessage());
                 return;
             }
         }
-        logger.info("--- ORCHESTRATOR: Plan execution finished with final result: {} ---", finalResult);
+        logger.info("ORCHESTRATOR: Plan execution finished with final result: {}", finalResult);
     }
 
     /**
@@ -181,23 +174,20 @@ public class AgentService {
 
         String masterPrompt = createMasterPrompt(historyString);
 
-        logger.info("--- SENDING MASTER PROMPT TO LLM ---");
+        logger.info("SENDING MASTER PROMPT TO LLM");
         String agentResponse = this.geminiChatClient.prompt()
                 .user(masterPrompt)
                 .call()
                 .content();
-        logger.info("--- RESPONSE RECEIVED FROM LLM ---");
+        logger.info("RESPONSE RECEIVED FROM LLM");
 
         final String imagePrefix = "IMAGE_RESULT:::";
         String textResponseForUser = agentResponse;
         String imageDataForFrontend = null;
 
         if (agentResponse != null && agentResponse.startsWith(imagePrefix)) {
-            // Detta är ett bildsvar!
             imageDataForFrontend = agentResponse.substring(imagePrefix.length()).trim();
 
-            // Meddelandet som sparas i chatten och visas för användaren ska vara en enkel bekräftelse.
-            // Detta hindrar den stora base64-datan från att förorena chat-historiken.
             textResponseForUser = "Here is the image I generated for you.";
         }
 
@@ -205,38 +195,7 @@ public class AgentService {
         return new ChatMessageResponse(textResponseForUser, conversation.getId(), imageDataForFrontend);
     }
 
-    /**
-     * Retrieves all chat conversations for a given user ID, ordered by creation
-     * timestamp.
-     *
-     * @param userId The ID of the user for whom to retrieve conversations.
-     * @return A list of ChatConversationResponse DTOs.
-     */
-    public List<ChatConversationResponse> getConversationsByUserId(Long userId) {
-        // Now, directly use the new repository method to find by user ID
-        return conversationRepository.findByUserIdOrderByCreationTimeStampDesc(userId).stream()
-                .map(conversation -> new ChatConversationResponse(
-                        conversation.getId(),
-                        conversation.getTitle(),
-                        conversation.getCreationTimeStamp()))
-                .collect(Collectors.toList());
-    }
 
-    /**
-     * Retrieves all chat messages for a given conversation ID, ordered by creation
-     * timestamp.
-     *
-     * @param conversationId The ID of the conversation.
-     * @return A list of ChatMessage entities.
-     */
-    public List<ChatMessage> getMessagesByConversationId(Long conversationId) {
-        // You might want to add security check here if a user should only access their
-        // own conversations
-        // e.g., if (conversationRepository.findById(conversationId).map(c ->
-        // !c.getUser().equals(currentUser)).orElse(true)) throw new
-        // AccessDeniedException;
-        return messageRepository.findByConversationIdOrderByCreationTimeStampAsc(conversationId);
-    }
 
     /**
      * Creates the plan to be executed
@@ -278,43 +237,77 @@ public class AgentService {
      */
     private String createMasterPrompt(String conversationHistory) {
         return """
-            You are an expert, helpful, and collaborative social media marketing agent. Your goal is to assist the user by creating content, 
-            providing ideas, and performing actions based on their instructions.
+        You are an expert, helpful, and collaborative social media marketing agent. Your goal is to assist the user by creating content,
+        providing ideas, and performing actions based on their instructions.
 
-            **--- YOUR WORKFLOW AND RULES ---**
+        **--- YOUR WORKFLOW AND RULES ---**
 
-            1.  **UNDERSTAND AND GATHER INFORMATION:**
-                - First, analyze the user's request in the context of the entire conversation.
-                - If you need information to fulfill the request (like news or post inspiration), use your information-gathering tools 
-                (`getMarketNews`, `getTopPerformingPosts`) silently as a first step.
-                - **TOPIC RULE:** If `getMarketNews` needs a `topic` and the user is general (e.g., "latest news"),
-                 you MUST use the default topic `'business OR technology'`. DO NOT ask the user for a topic.
+        1.  **UNDERSTAND AND GATHER INFORMATION:**
+            - First, analyze the user's request in the context of the entire conversation.
+            - If you need information to fulfill the request (like news or post inspiration), use your information-gathering tools
+            (`getMarketNews`, `getTopPerformingPosts`) silently as a first step.
+            - **TOPIC RULE:** If `getMarketNews` needs a `topic` and the user is general (e.g., "latest news"),
+             you MUST use the default topic `'business OR technology'`. DO NOT ask the user for a topic.
 
-            2.  **APPLY PLATFORM RULES:**
-                - When creating content for **Twitter**, the final text MUST NOT exceed 280 characters.
-                - When creating content for **Facebook**, posts can be longer and more conversational.
+        2.  **CONTEXT AWARENESS - VERY IMPORTANT:**
+             - **Image Posting Context:** If the user asks you to post an image, and an image was successfully generated
+              in the immediately preceding turn (look for a message starting with `IMAGE_RESULT:::` in the conversation history), 
+              you MUST assume the user wants to post *that specific image*.
+               - **RULE FOR EXTRACTING URL:** You must extract **ONLY the URL part** (the string that starts with `http://...`) from 
+               the `IMAGE_RESULT:::` message and pass that clean URL string to the `imageUrl` parameter of the `postImageToFacebook` tool.
+                Do NOT include the "IMAGE_RESULT:::" prefix in the `imageUrl` parameter.
+               - You should still ask for confirmation before posting, but your confirmation question should be about the *action*, 
+               not about generating a new image. For example: "Got it. I will post the image we just created with the caption '...'. Is that correct?"
 
-            3.  **DETERMINE FINAL ACTION:** Based on the user's request, decide your final action:
+        3.  **DETERMINE FINAL ACTION:** Based on the user's request, decide your final action:
 
-                - **IF the request is for IMAGE GENERATION:** This is a creative action. Execute it immediately without confirmation. 
-                Your process is to first create a detailed, descriptive prompt IN ENGLISH, and then call the `generateImage` tool with that prompt. 
-                Your turn ends after you call the tool.
+            - **IF the request is for an IMAGE or ANIMATED IMAGE:** This is a creative action. Execute it immediately without confirmation.
+            Your process is to first create a detailed, descriptive prompt IN ENGLISH, and then call the `generateImage` for static pictures or `generateAnimatedImage` for moving pictures/GIFs.
+            Your turn ends after you call the tool.
 
-                - **IF the request is for an IRREVERSIBLE ACTION (e.g., `postToFacebook`, `createTask`)
-                :** You MUST first present your draft or plan to the user and ask for their explicit confirmation 
-                (e.g., "Here is the draft... Shall I publish it?"). Only call the actual tool in your NEXT turn, after the user has agreed.
+            - **IF the request is for an IRREVERSIBLE ACTION (e.g., `postToFacebook`, `postImageToFacebook`, `createTask`)
+            :** You MUST first present your draft or plan to the user and ask for their explicit confirmation
+            (e.g., "Here is the draft... Shall I publish it?"). Only call the actual tool in your NEXT turn, after the user has agreed.
+            **To post an image, use the `postImageToFacebook` tool with the `imageUrl` and a `caption`.**
 
-                - **IF the request is ONLY for information or ideas:** Provide the information directly and cleanly as your final answer.
+            - **IF the request is ONLY for information or ideas:** Provide the information directly and cleanly as your final answer.
 
-            **--- OUTPUT FORMATTING ---**
-            - When a tool returns a result prefixed with "IMAGE_RESULT:::", your final response to the user MUST be that 
-            exact result string and nothing else.
+        **--- OUTPUT FORMATTING ---**
+        - When a tool returns a result prefixed with "IMAGE_RESULT:::", your final response to the user MUST be that
+        exact result string and nothing else.
 
-            ---
-            CONVERSATION HISTORY:
-            %s
-            ---
-            """.formatted(conversationHistory);
+        ---
+        CONVERSATION HISTORY:
+        %s
+        ---
+        """.formatted(conversationHistory);
+    }
+
+    /**
+     * Retrieves all chat conversations for a given user ID, ordered by creation
+     * timestamp.
+     *
+     * @param userId The ID of the user for whom to retrieve conversations.
+     * @return A list of ChatConversationResponse DTOs.
+     */
+    public List<ChatConversationResponse> getConversationsByUserId(Long userId) {
+        return conversationRepository.findByUserIdOrderByCreationTimeStampDesc(userId).stream()
+                .map(conversation -> new ChatConversationResponse(
+                        conversation.getId(),
+                        conversation.getTitle(),
+                        conversation.getCreationTimeStamp()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves all chat messages for a given conversation ID, ordered by creation
+     * timestamp.
+     *
+     * @param conversationId The ID of the conversation.
+     * @return A list of ChatMessage entities.
+     */
+    public List<ChatMessage> getMessagesByConversationId(Long conversationId) {
+        return messageRepository.findByConversationIdOrderByCreationTimeStampAsc(conversationId);
     }
 
     /**
@@ -333,7 +326,6 @@ public class AgentService {
         } else {
             ChatConversation conversation = new ChatConversation();
             conversation.setUser(currentUser);
-            // Setting temporary title, can be updated later
             conversation.setTitle(request.message().substring(0, Math.min(request.message().length(), 50)));
             ChatConversation savedConversation = conversationRepository.save(conversation);
             logger.info("Created new conversation with id {}", savedConversation.getId());
@@ -391,10 +383,6 @@ public class AgentService {
         if (content == null) {
             return "";
         }
-        // This regex looks for common starting phrases followed by a colon and optional
-        // whitespace.
-        // It will remove things like "Here's the post:", "Draft:", "Sure, here it is:",
-        // etc.
         String cleaned = content.replaceAll("(?i)^.*?:\\s*", "").trim();
         return cleaned;
     }
@@ -402,14 +390,11 @@ public class AgentService {
     private String createSynthesisPrompt(String news, String topPosts, String goal, String platform) {
         String platformConstraint = "";
         if ("Twitter".equalsIgnoreCase(platform)) {
-            // Twitter's limit is 280 characters. Let's give the model a buffer.
             platformConstraint = "The post must be concise and under 250 characters. Use hashtags relevant to the topic.";
         } else if ("Facebook".equalsIgnoreCase(platform)) {
-            // Facebook's limit is very high, but best practice is to keep it shorter for engagement.
             platformConstraint = "The post can be longer and more descriptive than a tweet. Aim for a friendly, conversational tone.";
         }
 
-        // You can add more platforms here as needed.
 
         return """
         Based on the following news: %s

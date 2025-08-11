@@ -1,6 +1,6 @@
 package com.exjobb.backend.controller;
 
-import com.exjobb.backend.service.FacebookService;
+import com.exjobb.backend.service.social.FacebookService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -42,7 +42,7 @@ public class FacebookController {
                 facebookService.handleFacebookCallback(code, username);
                 return "redirect:http://localhost:5173/profile?facebook=connected";
             } catch (Exception e) {
-                // Log the exception e.g., e.printStackTrace();
+
                 return "redirect:http://localhost:5173/login?error=" + e.getMessage();
             }
         }

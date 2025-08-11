@@ -1,4 +1,4 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.media;
 
 
 public interface ImageGenerationService {
@@ -10,4 +10,5 @@ public interface ImageGenerationService {
      * @return A string containing the image data URL or a link to the image.
      */
     String generateImage(String imagePrompt);
+
 }

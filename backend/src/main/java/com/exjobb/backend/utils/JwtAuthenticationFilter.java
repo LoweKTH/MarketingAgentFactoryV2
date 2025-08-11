@@ -1,7 +1,6 @@
 package com.exjobb.backend.utils;
 
-import com.exjobb.backend.service.UserService;
-import com.exjobb.backend.utils.JwtUtil;
+import com.exjobb.backend.service.user.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +20,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserService userService;
 
-    // Use constructor injection instead of @Autowired field injection
     public JwtAuthenticationFilter(JwtUtil jwtUtil, UserService userService) {
         this.jwtUtil = jwtUtil;
         this.userService = userService;
@@ -36,16 +34,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username = null;
         String jwt = null;
 
-        // Check if Authorization header exists and starts with "Bearer "
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7); // Remove "Bearer " prefix
+            jwt = authorizationHeader.substring(7);
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception e) {
                 logger.error("Cannot extract username from JWT token: " + e.getMessage());
             }
         } else if (request.getCookies() != null) {
-            // Check for JWT in cookies if not in Authorization header
+
             for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
                 if ("jwt".equals(cookie.getName())) {
                     jwt = cookie.getValue();
@@ -59,11 +56,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // If username is found and no authentication is set in SecurityContext
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userService.loadUserByUsername(username);
 
-            // Validate token
             if (jwtUtil.validateToken(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
                         new UsernamePasswordAuthenticationToken(

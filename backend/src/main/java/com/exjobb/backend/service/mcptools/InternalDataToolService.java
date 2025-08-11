@@ -1,4 +1,4 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.mcptools;
 
 import com.exjobb.backend.entity.SocialMediaPost;
 import com.exjobb.backend.repository.SocialMediaPostRepository;
@@ -10,6 +10,15 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
+/**
+ * Acts as a part of the application's "Tool Server" layer (conceptually similar to an MCP Server).
+ * This service exposes tools (@Tool) that allow the AI agent to interact with the application's
+ * internal database and state, rather than external APIs.
+ * Together with {@link ExternalDataToolService}, this class provides the functions
+ * for the agent to query internal data, such as retrieving top-performing historical posts
+ * to learn from past successes.
+ */
 @Service
 public class InternalDataToolService {
 
@@ -24,7 +33,7 @@ public class InternalDataToolService {
                     "Use this to learn from successful content to match the style and tone..")
     public String getTopPerformingPosts(){
 
-        logger.info("--- TOOL CALLED: getTopPerformingPosts ---");
+        logger.info("TOOL CALLED: getTopPerformingPosts");
 
         List<SocialMediaPost> topPosts = postRepository.findFirst5ByOrderByEngagementScoreDesc();
 
@@ -43,7 +52,7 @@ public class InternalDataToolService {
 
         return "Here are some top-performing posts for inspiration:\n" +
                 topPosts.stream()
-                        .map(post -> "--- POST (Platform: " + post.getPlatform() + ") ---\n" + post.getContent())
+                        .map(post -> "POST (Platform: " + post.getPlatform() + ")\n" + post.getContent())
                         .collect(Collectors.joining("\n\n"));
 
     }

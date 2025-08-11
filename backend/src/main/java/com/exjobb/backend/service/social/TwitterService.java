@@ -1,8 +1,9 @@
-package com.exjobb.backend.service;
+package com.exjobb.backend.service.social;
 
 import com.exjobb.backend.entity.TwitterToken;
 import com.exjobb.backend.entity.User;
 import com.exjobb.backend.repository.TwitterTokenRepository;
+import com.exjobb.backend.service.user.UserService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
@@ -265,7 +266,7 @@ public class TwitterService {
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", "refresh_token");
             body.add("refresh_token", currentRefreshToken);
-            body.add("client_id", clientId); // Required for public clients and sometimes for confidential clients
+            body.add("client_id", clientId);
 
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
             ResponseEntity<String> responseEntity = restTemplate.exchange(
@@ -312,15 +313,14 @@ public class TwitterService {
         }
 
         TwitterToken token = tokenOptional.get();
-        // Calculate expiration time based on creation time and expiresIn duration
-        // Assuming expiresIn is in seconds
+
         java.time.Instant expiresAt = token.getCreatedAt().plusSeconds(Long.parseLong(token.getExpiresIn()));
 
         logger.debug("Token created at: {}", token.getCreatedAt());
         logger.debug("Token expires at: {}", expiresAt);
         logger.debug("Current time: {}", java.time.Instant.now());
-        // Check if the token is expired or about to expire (e.g., within 5 minutes)
-        // Add a small buffer (e.g., 300 seconds = 5 minutes) to refresh proactively
+
+
         if (Instant.now().isAfter(expiresAt.minusSeconds(300))) {
             logger.info("Twitter token for user {} is expired or near expiration. Attempting to refresh.", user.getUsername());
 
@@ -328,26 +328,23 @@ public class TwitterService {
                 AccessTokenResponse refreshedTokenResponse = refreshAccessToken(token.getRefreshToken());
 
                 if (refreshedTokenResponse != null && refreshedTokenResponse.getAccessToken() != null) {
-                    // Update the stored token with new values
                     token.setAccessToken(refreshedTokenResponse.getAccessToken());
-                    // Refresh token might also be refreshed, Twitter API v2 often provides new refresh token
+
                     if (refreshedTokenResponse.getRefreshToken() != null) {
                         token.setRefreshToken(refreshedTokenResponse.getRefreshToken());
                     }
                     token.setExpiresIn(refreshedTokenResponse.getExpiresIn());
-                    token.setCreatedAt(Instant.now()); // Update creation time to now
+                    token.setCreatedAt(Instant.now());
                     twitterTokenRepository.save(token);
                     logger.info("Twitter token successfully refreshed and saved for user: {}", user.getUsername());
                     return Optional.of(token);
                 } else {
                     logger.warn("Failed to refresh Twitter token for user {}. Refresh token might be invalid or expired.", user.getUsername());
-                    // Invalidate the token if refresh failed
                     twitterTokenRepository.delete(token);
                     return Optional.empty();
                 }
             } else {
                 logger.warn("No refresh token available for user {}. Twitter token cannot be refreshed.", user.getUsername());
-                // Invalidate the token as it cannot be refreshed
                 twitterTokenRepository.delete(token);
                 return Optional.empty();
             }
@@ -369,7 +366,6 @@ public class TwitterService {
     public String postTweetForUser(User user, String tweetContent) {
         logger.info("Attempting to post tweet for user: {}", user.getUsername());
 
-        // Call the new checkAndRefreshToken method
         Optional<TwitterToken> tokenOptional = checkAndRefreshToken(user);
 
         if (tokenOptional.isEmpty()) {
@@ -379,11 +375,9 @@ public class TwitterService {
         TwitterToken token = tokenOptional.get();
         String accessToken = token.getAccessToken();
 
-        // The token should be valid at this point or an exception would have been thrown
         return postTweet(accessToken, tweetContent);
     }
 
-    // Enhanced version of your existing postTweet method with better error handling
     public String postTweet(String accessToken, String tweetContent) {
         logger.info("Attempting to publish tweet to Twitter.");
         try {
@@ -392,7 +386,6 @@ public class TwitterService {
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Twitter API v2 endpoint for posting tweets
             Map<String, String> requestBody = Collections.singletonMap("text", tweetContent);
             String jsonBody = objectMapper.writeValueAsString(requestBody);
 
@@ -405,7 +398,6 @@ public class TwitterService {
                     String.class);
 
             if (responseEntity.getStatusCode().is2xxSuccessful() && responseEntity.getBody() != null) {
-                // Parse the response to extract the tweet ID
                 Map<String, Object> responseMap = objectMapper.readValue(responseEntity.getBody(), Map.class);
                 if (responseMap.containsKey("data")) {
                     Map<String, String> data = (Map<String, String>) responseMap.get("data");
@@ -427,7 +419,6 @@ public class TwitterService {
             String errorBody = e.getResponseBodyAsString();
             logger.error("HTTP error publishing tweet: Status: {}, Body: {}", e.getStatusCode(), errorBody, e);
 
-            // Parse Twitter API error response for better error messages
             try {
                 Map<String, Object> errorResponse = objectMapper.readValue(errorBody, Map.class);
                 if (errorResponse.containsKey("errors")) {
@@ -438,7 +429,6 @@ public class TwitterService {
                     }
                 }
             } catch (Exception parseException) {
-                // Fall back to generic error if we can't parse the response
             }
 
             if (e.getStatusCode().value() == 401) {
@@ -454,16 +444,14 @@ public class TwitterService {
         }
     }
 
-    // Add this method to your TwitterOAuthService class
      public boolean isTwitterConnected(User user) {
         if (user == null) {
             return false;
         }
         
-        Optional<TwitterToken> twitterTokenOptional = checkAndRefreshToken(user); // Use your existing method
+        Optional<TwitterToken> twitterTokenOptional = checkAndRefreshToken(user);
 
-        // If checkAndRefreshToken returns an Optional with a token, it means it's valid or successfully refreshed.
-        // Then, check if the accessToken itself is present and not empty.
+
         return twitterTokenOptional.isPresent() 
                && twitterTokenOptional.get().getAccessToken() != null 
                && !twitterTokenOptional.get().getAccessToken().isEmpty();

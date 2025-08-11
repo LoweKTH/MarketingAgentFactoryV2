@@ -1,7 +1,7 @@
 package com.exjobb.backend.config;
 
-import com.exjobb.backend.service.ExternalDataToolService;
-import com.exjobb.backend.service.InternalDataToolService;
+import com.exjobb.backend.service.mcptools.ExternalDataToolService;
+import com.exjobb.backend.service.mcptools.InternalDataToolService;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.context.annotation.Bean;

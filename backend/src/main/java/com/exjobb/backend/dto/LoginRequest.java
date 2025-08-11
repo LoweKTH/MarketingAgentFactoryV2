@@ -9,7 +9,6 @@ public class LoginRequest {
     @NotBlank(message = "Password cannot be empty")
     private String password;
 
-    // Getters and Setters
     public String getUsername() {
         return username;
     }
